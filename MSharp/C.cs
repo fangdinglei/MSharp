@@ -280,9 +280,9 @@ int a=0; self=null;
 
     //}
 
-    //static Block AnalyzeFunction(AnalyzeContext context, ClassDeclarationSyntax classD, MethodDeclarationSyntax methodD, LClass classContext)
+    //static Method AnalyzeFunction(AnalyzeContext context, ClassDeclarationSyntax classD, MethodDeclarationSyntax methodD, LClass classContext)
     //{
-    //    Block res = new Block(classContext);
+    //    Method res = new Method(classContext);
     //    //foreach (ExpressionStatementSyntax statement in methodD.Body!.Statements)
     //    //{
     //    //    if (statement.Expression is InvocationExpressionSyntax ies) {
@@ -296,7 +296,7 @@ int a=0; self=null;
     //    return res;
     //}
 
-    //static void AnalyzeCall(Block method, InvocationExpressionSyntax ies)
+    //static void AnalyzeCall(Method method, InvocationExpressionSyntax ies)
     //{
     //    if (ies.Expression is MemberAccessExpressionSyntax maes
     //        && maes.Expression is IdentifierNameSyntax ins)

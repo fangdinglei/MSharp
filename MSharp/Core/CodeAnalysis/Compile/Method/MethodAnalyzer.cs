@@ -4,6 +4,7 @@ using MSharp.Core.Logic;
 using MSharp.Core.Shared;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 
 namespace MSharp.Core.CodeAnalysis.Compile.Method
@@ -134,6 +135,28 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method
             }
         }
 
+        public void AnalyzeMethodBody(CompileContext context, IMethodSymbol methodSymbol, LMethod method, bool checkCircularDependency)
+        {
+            if (checkCircularDependency && context.Analyzing.ContainsKey(methodSymbol))
+                throw new Exception("循环依赖:" + methodSymbol.ToString());
+
+            if (method.Block != null)
+                return;
+            context.Analyzing.Add(methodSymbol, method);
+            try
+            {
+                MethodDeclarationSyntax methodSyntax = (MethodDeclarationSyntax)
+                    methodSymbol.DeclaringSyntaxReferences[0].GetSyntax();
+                var statements = methodSyntax!.Body!.Statements;
+                var semanticModel = context.SemanticModels[methodSyntax.SyntaxTree];
+                method.Block = context.MethodBodyAnalyzer.Analyze(context, method, semanticModel, statements.ToList());
+            }
+            finally
+            {
+                context.Analyzing.Remove(methodSymbol);
+            }
+        }
+
         /// <summary>
         /// 分析方法
         /// </summary>
@@ -153,6 +176,7 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method
             }
 
             var method = @class.CreateMethod(methodSymbol);
+            method.Parameters = AnalyzeMethodParameters(context, semanticModel, methodSymbol, method);
 
             // 分析调用类型
             AnalyzeGameCallAttribute(method, methodSymbol);
@@ -160,26 +184,18 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method
             return method;
         }
 
-        public void AnalyzeMethodBody(CompileContext context, IMethodSymbol methodSymbol, LMethod method, bool checkCircularDependency)
+        private List<LParameter> AnalyzeMethodParameters(CompileContext context, SemanticModel semanticModel, IMethodSymbol methodSymbol, LMethod method)
         {
-            if (checkCircularDependency && context.Analyzing.ContainsKey(methodSymbol))
-                throw new Exception("循环依赖:" + methodSymbol.ToString());
-
-            if (method.Block!=null)
-                return;
-            context.Analyzing.Add(methodSymbol, method);
-            try
+            List<LParameter> res = new List<LParameter>();
+            foreach (var parameterSymbol in methodSymbol.Parameters)
             {
-                MethodDeclarationSyntax methodSyntax = (MethodDeclarationSyntax)
-                    methodSymbol.DeclaringSyntaxReferences[0].GetSyntax();
-                var statements = methodSyntax!.Body!.Statements;
-                var semanticModel = context.SemanticModels[methodSyntax.SyntaxTree];
-                method.Block = context.MethodBodyAnalyzer.Analyze(context, semanticModel, statements.ToList());
+                // 不支持 parameters string[] 这样的声明
+                Debug.Assert(!parameterSymbol.IsParams, "parameters does not supported at " + method.ToString());
+                var v = method.VariableTable.Add(parameterSymbol.Type, parameterSymbol.Name);
+                LParameter parameter = new LParameter(v, parameterSymbol.HasExplicitDefaultValue ? parameterSymbol.ExplicitDefaultValue : null);
+                res.Add(parameter);
             }
-            finally
-            {
-                context.Analyzing.Remove(methodSymbol);
-            }
+            return res;
         }
 
         /// <summary>
@@ -203,6 +219,8 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method
 
         }
 
+
+
         // 已经在分析方法体时分析
         ///// <summary>
         ///// 分析方法中所有本地变量
@@ -210,7 +228,7 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method
         ///// <param name="semanticModel"></param>
         ///// <param name="methods"></param>
         ///// <param name="funcSyntax"></param>
-        //private void AnalyzeVariables(SemanticModel semanticModel, Block methods, MethodDeclarationSyntax funcSyntax)
+        //private void AnalyzeVariables(SemanticModel semanticModel, Method methods, MethodDeclarationSyntax funcSyntax)
         //{
         //    var localVariables = funcSyntax.DescendantNodes().OfType<LocalDeclarationStatementSyntax>();
         //    foreach (var localVariable in localVariables)

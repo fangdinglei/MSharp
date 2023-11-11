@@ -28,10 +28,10 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method
                          ptr = ptr.BaseType;
                      }
                  })
-                .Select(it =>(StatementHandle?)Activator.CreateInstance(it))
+                .Select(it => (StatementHandle?)Activator.CreateInstance(it))
                 .ToList().ForEach(it =>
                 {
-                    Debug.Assert(it!=null);
+                    Debug.Assert(it != null);
                     foreach (Type type in it.Types)
                     {
                         _handles.Add(type, it);
@@ -39,9 +39,9 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method
                 });
         }
 
-        public LBlock Analyze(CompileContext context, SemanticModel semanticModel, List<StatementSyntax> syntaxes)
+        public LBlock Analyze(CompileContext context, LMethod method, SemanticModel semanticModel, List<StatementSyntax> syntaxes)
         {
-            var block = new LBlock();
+            var block = new LBlock(method);
             foreach (var statement in syntaxes)
             {
                 Type? type = null;

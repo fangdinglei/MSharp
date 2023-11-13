@@ -6,7 +6,7 @@ namespace MSharp.UserCode
 {
     public class B
     {
-        public void A(int a)
+        public void A(float a)
         {
 
         }
@@ -22,7 +22,7 @@ namespace MSharp.UserCode
         public override void Main()
         {
             int a = 1;
-            b.A(1 + 1);
+            b.A(-1+(+2.1f));
             //int a = 1;
             //int b = a + 
             //    1;

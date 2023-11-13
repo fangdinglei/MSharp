@@ -1,12 +1,16 @@
-﻿using System;
+﻿using MSharp.Core.Shared;
+using System;
 
 namespace MSharp.Core.Game
 {
+    [GameIgnore]
     public class GameObject { }
+    [GameIgnore]
     public class Building : GameObject
     {
 
     }
+    [GameIgnore]
     public class Unit : GameObject
     {
         /// <summary>
@@ -127,12 +131,14 @@ namespace MSharp.Core.Game
         /// </summary>
         public void Bind() { }
     }
+    [GameIgnore]
     public class Memory : GameObject
     {
         public double Read(double at) { return 0; }
 
         public void Write(double value, double at) { }
     }
+    [GameIgnore]
     public class Processor : Building
     {
 

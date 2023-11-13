@@ -12,7 +12,6 @@
 
   <ItemGroup>
     <None Include="..\.editorconfig" Link=".editorconfig" />
-    <None Include="..\README.md" Link="README.md" />
   </ItemGroup>
 
   <ItemGroup>

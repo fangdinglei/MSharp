@@ -39,22 +39,27 @@ namespace MSharp.Core.CodeAnalysis
         }
     }
 
+    /// <summary>
+    /// 变量 一个同样的变量应该具有同样的引用
+    /// </summary>
     internal class LVariable
     {
         public LMethod Method;
         public int? Index;
         public string? Name;
         public ITypeSymbol Type;
+        public ISymbol? Symbol;
 
         public bool IsTemp;
 
         public string RealName => (Index.HasValue ? "var" + Index : Name);
 
-        public LVariable(LMethod method, string name, ITypeSymbol type)
+        public LVariable(LMethod method, string name, ITypeSymbol type,ISymbol symbol)
         {
             Method = method;
             Name = name;
             Type = type;
+            Symbol = symbol;
         }
 
         public LVariable(LMethod method, int index, ITypeSymbol type)
@@ -65,13 +70,14 @@ namespace MSharp.Core.CodeAnalysis
             IsTemp = true;
         }
 
-        public LVariable(LMethod method, string name, int index, ITypeSymbol type)
+        public LVariable(LMethod method, string name, int index, ITypeSymbol type, ISymbol? symbol)
         {
             Method = method;
             Index = index;
             Name = name;
             Type = type;
             IsTemp = false;
+            Symbol = symbol;
         }
 
 
@@ -95,6 +101,7 @@ namespace MSharp.Core.CodeAnalysis
 
         public LVariableOrValue(object? value)
         {
+            Debug.Assert(value is not LVariable);
             Value = value;
         }
         public LVariableOrValue(LVariable? variable)
@@ -112,6 +119,8 @@ namespace MSharp.Core.CodeAnalysis
         public List<LParameter>? Parameters;
 
         public LBlock? Block;
+
+        public LVariableOrValue? Return;
 
 
 
@@ -139,7 +148,7 @@ namespace MSharp.Core.CodeAnalysis
             // old->new parameters 旧->新变量映射表
             Dictionary<LVariable, LVariable> newVariablesDict = new();
             // To prevent conflicts, reset the variable name 要将所有变量重写，防止冲突
-            foreach (LVariable variable in VariableTable.GetAll())
+            foreach (LVariable variable in method.VariableTable.GetAll())
             {
                 var newVariable = VariableTable.Add(variable);
                 newVariablesDict.Add(variable, newVariable);
@@ -194,6 +203,7 @@ namespace MSharp.Core.CodeAnalysis
     {
         int ptr = 0;
         Dictionary<string, LVariable> defines = new();
+        Dictionary<ISymbol, LVariable> SymbolDict = new( SymbolEqualityComparer.Default);
         LMethod _method;
 
         public VariableTable(LMethod method)
@@ -201,14 +211,15 @@ namespace MSharp.Core.CodeAnalysis
             _method = method;
         }
 
-        public LVariable Add(ITypeSymbol type, string name)
+        public LVariable Add(ITypeSymbol type,ISymbol symbol, string name)
         {
             while (true)
             {
-                var v = new LVariable(_method, name, type);
+                var v = new LVariable(_method, name, type, symbol);
                 if (defines.ContainsKey(v.RealName))
                     continue;
                 defines.Add(v.RealName, v);
+                SymbolDict.Add(symbol, v);
                 return v;
             }
         }
@@ -239,7 +250,7 @@ namespace MSharp.Core.CodeAnalysis
                 // 使用自动生成的名称
                 while (true)
                 {
-                    var v = new LVariable(_method, variable.Name, ++ptr, variable.Type);
+                    var v = new LVariable(_method, variable.Name, ++ptr, variable.Type, variable.Symbol);
                     if (defines.ContainsKey(v.RealName))
                         continue;
                     defines.Add(v.RealName, v);
@@ -255,10 +266,18 @@ namespace MSharp.Core.CodeAnalysis
                     if (defines.ContainsKey(v.RealName))
                         continue;
                     defines.Add(v.RealName, v);
+#pragma warning disable CS8604
+                    SymbolDict.Add(v.Symbol, v);
+#pragma warning restore CS8604
                     return v;
                 }
             }
             throw new Exception();
+        }
+
+        public LVariable Get(ISymbol symbol) {
+            //TODO
+            return SymbolDict[symbol];
         }
 
         public ICollection<LVariable> GetAll()

@@ -38,16 +38,16 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method
         /// <br/> <see cref="GameIgnoreAttribute"//>
         /// </summary>
         /// <returns></returns>
-        bool IsIgnoreClass(INamedTypeSymbol classSymbol)
+        bool IsIgnore(INamedTypeSymbol symbol)
         {
-            var gameCallAttribute = classSymbol!.GetAttributes().Where(it => GetFullName(it!.AttributeClass) == typeof(GameCallAttribute).FullName).FirstOrDefault();
+            var gameCallAttribute = symbol!.GetAttributes().Where(it => GetFullName(it!.AttributeClass) == typeof(GameIgnoreAttribute).FullName).FirstOrDefault();
             return gameCallAttribute != null;
         }
 
         public void AnalyzeClass(CompileContext context, SemanticModel semanticModel, INamedTypeSymbol classSymbol)
         {
 
-            if (IsIgnoreClass(classSymbol))
+            if (IsIgnore(classSymbol))
                 return;
 
             LClass lClass = context.CreateClass(classSymbol);
@@ -149,7 +149,7 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method
                     methodSymbol.DeclaringSyntaxReferences[0].GetSyntax();
                 var statements = methodSyntax!.Body!.Statements;
                 var semanticModel = context.SemanticModels[methodSyntax.SyntaxTree];
-                method.Block = context.MethodBodyAnalyzer.Analyze(context, method, semanticModel, statements.ToList());
+                context.MethodBodyAnalyzer.Analyze(context, method, semanticModel, statements.ToList());
             }
             finally
             {
@@ -189,9 +189,7 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method
             List<LParameter> res = new List<LParameter>();
             foreach (var parameterSymbol in methodSymbol.Parameters)
             {
-                // 不支持 parameters string[] 这样的声明
-                Debug.Assert(!parameterSymbol.IsParams, "parameters does not supported at " + method.ToString());
-                var v = method.VariableTable.Add(parameterSymbol.Type, parameterSymbol.Name);
+                var v = method.VariableTable.Add(parameterSymbol.Type, parameterSymbol, parameterSymbol.Name);
                 LParameter parameter = new LParameter(v, parameterSymbol.HasExplicitDefaultValue ? parameterSymbol.ExplicitDefaultValue : null);
                 res.Add(parameter);
             }

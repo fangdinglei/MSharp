@@ -42,6 +42,7 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method
         public LBlock Analyze(CompileContext context, LMethod method, SemanticModel semanticModel, List<StatementSyntax> syntaxes)
         {
             var block = new LBlock(method);
+            method.Block=block;
             foreach (var statement in syntaxes)
             {
                 Type? type = null;

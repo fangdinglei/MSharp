@@ -1,5 +1,7 @@
 ﻿using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles;
 using MSharp.Core.CodeAnalysis.MindustryCode;
 using MSharp.Core.Game;
 using MSharp.Core.Shared;
@@ -29,46 +31,9 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.StatementHandles
     }
     internal abstract class StatementHandle
     {
-        Dictionary<string, MindustryOperatorKind> BinaryOperatorMap = new()
-        {
-            { "+", MindustryOperatorKind.add},
-            { "-", MindustryOperatorKind.sub},
-        };
-
-        Dictionary<string, MindustryOperatorKind> UnaryOperatorMap = new()
-        {
-            { "-", MindustryOperatorKind.sub},
-        };
-
         public abstract List<Type> Types { get; }
 
         public abstract void Handle(StatementHandleParameters parameters);
-
-        public LVariableOrValue ParseAsVariableOrValue(ExpressionSyntax expression, LMethod method, SemanticModel semanticModel)
-        {
-            if (expression is LiteralExpressionSyntax les)
-                return new LVariableOrValue(les.Token.Value);
-
-            if (expression is BinaryExpressionSyntax bes)
-            {
-                var typeInfo = semanticModel.GetTypeInfo(expression);
-                Debug.Assert(typeInfo.Type != null);
-                var variable = new LVariableOrValue(method.VariableTable.Add(typeInfo.Type));
-                var kind = BinaryOperatorMap[bes.OperatorToken.Text];
-                var left = ParseAsVariableOrValue(bes.Left, method, semanticModel);
-                var right = ParseAsVariableOrValue(bes.Right, method, semanticModel);
-                method.Emit(new Code_Operation(kind, variable, left, right));
-                return new LVariableOrValue(variable);
-            }
-            // TODO like -1+1
-            throw new NotImplementedException();
-        }
-
-        public LVariableOrValue ParseAsValue(LParameter argDefine)
-        {
-            return new LVariableOrValue(argDefine.DefaultValue);
-        }
-
     }
 
 
@@ -86,7 +51,8 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.StatementHandles
             var typeInfo = parameters.SemanticModel.GetTypeInfo(type);
             foreach (var variable in localDeclaration.Declaration.Variables)
             {
-                parameters.Block.Method.VariableTable.Add(typeInfo.Type, variable.Identifier.ToString());
+                var symbol = parameters.SemanticModel.GetDeclaredSymbol(variable);
+                parameters.Block.Method.VariableTable.Add(typeInfo.Type, symbol, variable.Identifier.ToString());
             }
         }
     }
@@ -150,12 +116,12 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.StatementHandles
                             {
                                 // 正常解析
                                 var arg = ies.ArgumentList.Arguments[i];
-                                variableOrValue = ParseAsVariableOrValue(arg.Expression, p.Block.Method, p.SemanticModel);
+                                variableOrValue = ExpressionHandle.GetValue(arg.Expression, p.SemanticModel, p.Block.Method);
                             }
                             else
                             {
                                 // 后面使用默认参数
-                                variableOrValue = ParseAsValue(argDefine);
+                                variableOrValue = null;//s ParseAsValue(argDefine);
                             }
                             dict.Add(argDefine.Variable, variableOrValue);
                         }

@@ -73,7 +73,7 @@ namespace MSharp.Core.CodeAnalysis.Compile
                 {
                     INamedTypeSymbol? classSymbol = semanticModel.GetDeclaredSymbol(clazz);
                     if (analyzeContext.Classes.TryGetValue(classSymbol, out var c))
-                    new ClassAnalyzer().AnalyzeCPUClass(analyzeContext, classSymbol, c);
+                        new ClassAnalyzer().AnalyzeCPUClass(analyzeContext, classSymbol, c);
                 }
             }
 

@@ -21,8 +21,9 @@ namespace MSharp.UserCode
         [GameCall(MethodCallMode.UnsafeStacked)]
         public override void Main()
         {
-            int a = 1;
-            b.A(-1+(+2.1f));
+            float a = -1 + (+2.1f);
+            float b = a + a;
+            //b = a;
             //int a = 1;
             //int b = a + 
             //    1;

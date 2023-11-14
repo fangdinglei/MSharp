@@ -54,7 +54,7 @@ namespace MSharp.Core.CodeAnalysis
 
         public string RealName => (Index.HasValue ? "var" + Index : Name);
 
-        public LVariable(LMethod method, string name, ITypeSymbol type,ISymbol symbol)
+        public LVariable(LMethod method, string name, ITypeSymbol type, ISymbol symbol)
         {
             Method = method;
             Name = name;
@@ -95,13 +95,12 @@ namespace MSharp.Core.CodeAnalysis
 
         public bool IsVariable => Variable != null;
 
-#pragma warning disable CS8603
-        public string VariableOrValueString => Variable != null ? Variable.RealName : Value!.ToString();
-#pragma warning restore CS8603
+        public string VariableOrValueString => Variable != null ? Variable.RealName : Value!.ToString()!;
 
         public LVariableOrValue(object? value)
         {
             Debug.Assert(value is not LVariable);
+            Debug.Assert(value is not LVariableOrValue);
             Value = value;
         }
         public LVariableOrValue(LVariable? variable)
@@ -203,7 +202,7 @@ namespace MSharp.Core.CodeAnalysis
     {
         int ptr = 0;
         Dictionary<string, LVariable> defines = new();
-        Dictionary<ISymbol, LVariable> SymbolDict = new( SymbolEqualityComparer.Default);
+        Dictionary<ISymbol, LVariable> SymbolDict = new(SymbolEqualityComparer.Default);
         LMethod _method;
 
         public VariableTable(LMethod method)
@@ -211,7 +210,7 @@ namespace MSharp.Core.CodeAnalysis
             _method = method;
         }
 
-        public LVariable Add(ITypeSymbol type,ISymbol symbol, string name)
+        public LVariable Add(ITypeSymbol type, ISymbol symbol, string name)
         {
             while (true)
             {
@@ -275,7 +274,8 @@ namespace MSharp.Core.CodeAnalysis
             throw new Exception();
         }
 
-        public LVariable Get(ISymbol symbol) {
+        public LVariable Get(ISymbol symbol)
+        {
             //TODO
             return SymbolDict[symbol];
         }

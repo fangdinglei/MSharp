@@ -187,5 +187,22 @@ namespace MSharp.Core.CodeAnalysis.MindustryCode
             return $"op {Operation} {Result!.VariableOrValueString} {Left!.VariableOrValueString}{r}";
         }
     }
+    internal class Code_Assign : BaseCode
+    {
+        public readonly LVariableOrValue Left;
+        public readonly LVariableOrValue Right;
+        public Code_Assign(LVariableOrValue left, LVariableOrValue right)
+        {
+            Left = left;
+            Right = right;
+            _variables.Add(left);
+            _variables.Add(right);
+        }
 
+        public override string ToMindustryCodeString()
+        {
+            // sample  set a 2    set a b
+            return $"set {Left.VariableOrValueString} {Right.VariableOrValueString}";
+        }
+    }
 }

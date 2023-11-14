@@ -4,7 +4,6 @@ using MSharp.Core.Logic;
 using MSharp.Core.Shared;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 
 namespace MSharp.Core.CodeAnalysis.Compile.Method

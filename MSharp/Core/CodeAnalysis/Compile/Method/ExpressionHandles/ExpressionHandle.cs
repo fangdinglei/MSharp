@@ -1,12 +1,12 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using MSharp.Core.CodeAnalysis.Compile.Method.StatementHandles;
 using MSharp.Core.CodeAnalysis.MindustryCode;
+using MSharp.Core.Game;
+using MSharp.Core.Shared;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Linq.Expressions;
 
 namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
 {
@@ -40,20 +40,25 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
                 });
         }
 
-        static public LVariableOrValue GetValue(ExpressionSyntax syntax, SemanticModel semanticModel, LMethod method)
+        static public LVariableOrValue GetValue(ExpressionSyntax syntax, CompileContext context, SemanticModel semanticModel, LMethod method)
         {
             var type = syntax.GetType();
             while (type != null && type != typeof(object))
             {
                 if (_handles.TryGetValue(type, out var handle))
-                    return handle.DoGetValue(syntax, semanticModel, method);
+                    return handle.DoGetValue(syntax, context, semanticModel, method);
                 type = type.BaseType;
             }
-            throw new Exception("TODO not support");
+            throw new Exception("TODO not support   " + syntax.ToString());
+        }
+
+        static public void Assign(LVariable left, ExpressionSyntax exp, CompileContext context, SemanticModel semanticModel, LMethod method)
+        {
+            method.Emit(new Code_Assign(new LVariableOrValue(left), GetValue(exp, context, semanticModel, method)));
         }
 
         public abstract Type Syntax { get; }
-        public abstract LVariableOrValue DoGetValue(ExpressionSyntax syntax, SemanticModel semanticModel, LMethod method);
+        public abstract LVariableOrValue DoGetValue(ExpressionSyntax syntax, CompileContext context, SemanticModel semanticModel, LMethod method);
     }
 
     /// <summary>
@@ -67,7 +72,7 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
             { "-", MindustryOperatorKind.sub},
         };
         public override Type Syntax => typeof(BinaryExpressionSyntax);
-        public override LVariableOrValue DoGetValue(ExpressionSyntax syntax, SemanticModel semanticModel, LMethod method)
+        public override LVariableOrValue DoGetValue(ExpressionSyntax syntax, CompileContext context, SemanticModel semanticModel, LMethod method)
         {
             Debug.Assert(syntax is BinaryExpressionSyntax);
             var bes = (BinaryExpressionSyntax)syntax;
@@ -75,10 +80,10 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
             Debug.Assert(typeInfo.Type != null);
             var variable = new LVariableOrValue(method.VariableTable.Add(typeInfo.Type));
             var kind = BinaryOperatorMap[bes.OperatorToken.Text];
-            var left = GetValue(bes.Left, semanticModel, method);
-            var right = GetValue(bes.Right, semanticModel, method);
+            var left = GetValue(bes.Left, context, semanticModel, method);
+            var right = GetValue(bes.Right, context, semanticModel, method);
             method.Emit(new Code_Operation(kind, variable, left, right));
-            return new LVariableOrValue(variable);
+            return variable;
         }
     }
 
@@ -89,7 +94,7 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
     {
         public override Type Syntax => typeof(LiteralExpressionSyntax);
 
-        public override LVariableOrValue DoGetValue(ExpressionSyntax syntax, SemanticModel semanticModel, LMethod method)
+        public override LVariableOrValue DoGetValue(ExpressionSyntax syntax, CompileContext context, SemanticModel semanticModel, LMethod method)
         {
             Debug.Assert(syntax is LiteralExpressionSyntax);
             var les = (LiteralExpressionSyntax)syntax;
@@ -103,7 +108,7 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
     {
         public override Type Syntax => typeof(IdentifierNameSyntax);
 
-        public override LVariableOrValue DoGetValue(ExpressionSyntax syntax, SemanticModel semanticModel, LMethod method)
+        public override LVariableOrValue DoGetValue(ExpressionSyntax syntax, CompileContext context, SemanticModel semanticModel, LMethod method)
         {
             Debug.Assert(syntax is IdentifierNameSyntax);
             var lns = (IdentifierNameSyntax)syntax;
@@ -125,7 +130,7 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
             { "-", MindustryOperatorKind.sub},
         };
         public override Type Syntax => typeof(PrefixUnaryExpressionSyntax);
-        public override LVariableOrValue DoGetValue(ExpressionSyntax syntax, SemanticModel semanticModel, LMethod method)
+        public override LVariableOrValue DoGetValue(ExpressionSyntax syntax, CompileContext context, SemanticModel semanticModel, LMethod method)
         {
             Debug.Assert(syntax is PrefixUnaryExpressionSyntax);
             var pues = (PrefixUnaryExpressionSyntax)syntax;
@@ -133,7 +138,7 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
             {
                 if (pues.Operand is LiteralExpressionSyntax les)
                 {
-                    var v= les.Token.Value;
+                    var v = les.Token.Value;
                     // INumber may help
                     if (v is int a)
                         return new LVariableOrValue(-a);
@@ -156,12 +161,13 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
                     else if (v is float j)
                         return new LVariableOrValue(-j);
                     else
-                        throw new Exception(" - is not allowed to operate " +  v?.GetType().FullName??"null");
+                        throw new Exception(" - is not allowed to operate " + v?.GetType().FullName ?? "null");
                 }
             }
             else if (pues.OperatorToken.Text == "+")
             {
-                if (pues.Operand is LiteralExpressionSyntax les) {
+                if (pues.Operand is LiteralExpressionSyntax les)
+                {
                     return new LVariableOrValue(les.Token.Value);
                 }
             }
@@ -173,14 +179,115 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
     /// () Parenthesized Expression
     /// <br/>括号语句，直接让处理子项
     /// </summary>
-    internal class ParenthesizedExpressionHandle:ExpressionHandle {
+    internal class ParenthesizedExpressionHandle : ExpressionHandle
+    {
         public override Type Syntax => typeof(ParenthesizedExpressionSyntax);
 
-        public override LVariableOrValue DoGetValue(ExpressionSyntax syntax, SemanticModel semanticModel, LMethod method)
+        public override LVariableOrValue DoGetValue(ExpressionSyntax syntax, CompileContext context, SemanticModel semanticModel, LMethod method)
         {
             Debug.Assert(syntax is ParenthesizedExpressionSyntax);
-            return GetValue(((ParenthesizedExpressionSyntax)syntax).Expression,semanticModel,method);
+            return GetValue(((ParenthesizedExpressionSyntax)syntax).Expression, context, semanticModel, method);
         }
     }
+
+    internal class InvocationExpressionHandle : ExpressionHandle
+    {
+        public override Type Syntax => typeof(InvocationExpressionSyntax);
+
+        public override LVariableOrValue DoGetValue(ExpressionSyntax syntax, CompileContext context, SemanticModel semanticModel, LMethod method)
+        {
+            Debug.Assert(syntax is InvocationExpressionSyntax);
+
+            InvocationExpressionSyntax ies = (InvocationExpressionSyntax)syntax;
+
+            MemberAccessExpressionSyntax? memberCall = ies.Expression as MemberAccessExpressionSyntax;
+            IdentifierNameSyntax? selfCall = ies.Expression as IdentifierNameSyntax;
+
+            if (memberCall != null)
+            {
+                // code like a.B();
+                // objectType like a.GetType
+                var objectType = semanticModel.GetTypeInfo(memberCall.Expression);
+                var gameObjectCall = context.TypeUtility.IsSonOf(objectType.Type, typeof(GameObject));
+                if (gameObjectCall)
+                {
+                    // Game API 游戏API调用，直接翻译
+                }
+                else
+                {
+                    // User Code 自定义函数，记录调用关系
+                    var methodSymbol = semanticModel.GetSymbolInfo(memberCall.Name).Symbol as IMethodSymbol;
+                    Debug.Assert(methodSymbol != null);
+                    if (!context.Methods.TryGetValue(methodSymbol, out var methodCalled))
+                        throw new Exception("未知调用 拒绝访问");
+                    method.Block!.Calls.Add(methodCalled);
+                    if (methodCalled.CallMode == MethodCallMode.Inline)
+                    {
+                        // 内联可能引发循环依赖
+                        // 取消延迟编译并立即编译方法体
+                        context.WaitFurtherAnalyzing.Remove(methodSymbol);
+                        context.MethodAnalyzer.AnalyzeMethodBody(
+                           context, methodSymbol, methodCalled, true
+                        );
+
+
+                        Debug.Assert(methodCalled.Block != null && methodCalled.Parameters != null);
+                        Debug.Assert(ies.ArgumentList.Arguments.Count <= methodCalled.Parameters.Count);
+                        Dictionary<LVariable, LVariableOrValue> dict = new();
+
+                        // 解析实参后合并另一个函数的语句到当前语句
+                        for (int i = 0; i < methodCalled.Parameters.Count; i++)
+                        {
+                            var argDefine = methodCalled.Parameters[i];
+                            LVariableOrValue? variableOrValue;
+
+                            Debug.Assert(argDefine.Used.HasValue, $"parameter used or not should be analyzed when call {nameof(context.MethodAnalyzer.AnalyzeMethodBody)}");
+                            if (!argDefine.Used.Value)
+                                continue;
+
+                            if (ies.ArgumentList.Arguments.Count > i)
+                            {
+                                // 正常解析
+                                var arg = ies.ArgumentList.Arguments[i];
+                                variableOrValue = ExpressionHandle.GetValue(arg.Expression, context, semanticModel, method);
+                            }
+                            else
+                            {
+                                // 后面使用默认参数
+                                variableOrValue = null;//s ParseAsValue(argDefine);
+                            }
+                            dict.Add(argDefine.Variable, variableOrValue);
+                        }
+                        method.Merge(methodCalled, dict);
+
+                    }
+                    else if (methodCalled.CallMode == MethodCallMode.Stacked)
+                    {
+                        // 基于栈的调用 延迟编译
+                        context.WaitFurtherAnalyzing[methodSymbol] = methodCalled;
+                    }
+                    else if (methodCalled.CallMode == MethodCallMode.UnsafeStacked)
+                    {// p.Method.Merge(methodCalled.Method, methodCalled.CallMode);
+                        throw new NotImplementedException();
+                    }
+                    else
+                    {
+                        throw new NotImplementedException();
+                    }
+                }
+            }
+            else if (selfCall != null)
+            {
+
+            }
+            else
+            {
+                throw new Exception();
+            }
+
+            return GetValue(((InvocationExpressionSyntax)syntax).Expression, context, semanticModel, method);
+        }
+    }
+
 
 }

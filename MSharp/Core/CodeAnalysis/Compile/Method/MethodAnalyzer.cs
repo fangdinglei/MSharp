@@ -87,18 +87,30 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method
 
             Console.WriteLine(1);
 
-
-            // TODO 分析调用关系
-            //          排除游戏调用
-            //          分析无效函数
-            //          分析主函数依赖
-
-            // TODO 游戏中间代码创建
-            //          中间代码结构体
-            //          中间代码转换
-            //          中间代码优化
-            // TODO 代码执行预览
-            // TODO 常量
+            /**
+             * TODO 游戏代码创建
+             *          中间代码生成
+             *              游戏操作
+             *                  sensor working
+             *              基础语句
+             *                  字面量     almost done
+             *                  二元运算    almost done
+             *                  单目运算    working
+             *              复杂结构
+             *                  条件语句
+             *                  goto
+             *                  循环
+             *                  堆栈调用
+             *              内联编译
+             *          中间代码优化
+             * TODO 代码执行预览
+             * TODO 常量
+             * TODO links处理优化
+             * TODO ExpressionHandle优化
+             *          参数结构化
+             *          文件结构优化，只暴露ExpressionHandle
+             * 
+             */
 
         }
 

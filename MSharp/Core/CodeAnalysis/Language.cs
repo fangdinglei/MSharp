@@ -107,6 +107,11 @@ namespace MSharp.Core.CodeAnalysis
         {
             Variable = variable;
         }
+
+        public override string ToString()
+        {
+            return VariableOrValueString;
+        }
     }
 
     internal class LMethod

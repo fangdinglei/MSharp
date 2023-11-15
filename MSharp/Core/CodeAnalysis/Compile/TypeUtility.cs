@@ -1,5 +1,6 @@
 ﻿using Microsoft.CodeAnalysis;
 using System;
+using System.Linq;
 
 namespace MSharp.Core.CodeAnalysis.Compile
 {
@@ -44,7 +45,14 @@ namespace MSharp.Core.CodeAnalysis.Compile
         /// <returns></returns>
         public string GetFullName(ITypeSymbol symbol)
         {
-            return symbol.ToString();
+            return symbol.ToString()!;
+        }
+
+        public bool HasAttribute(ISymbol? symbol, Type type)
+        {
+            if (symbol == null)
+                return false;
+            return null != symbol!.GetAttributes().Where(it => GetFullName(it!.AttributeClass!) == type.FullName).FirstOrDefault();
         }
 
     }

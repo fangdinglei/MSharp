@@ -52,9 +52,11 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
             throw new Exception("TODO not support   " + syntax.ToString());
         }
 
-        static public void Assign(LVariable left, ExpressionSyntax exp, CompileContext context, SemanticModel semanticModel, LMethod method)
+        static public LVariableOrValue Assign(LVariable left, ExpressionSyntax exp, CompileContext context, SemanticModel semanticModel, LMethod method)
         {
-            method.Emit(new Code_Assign(new LVariableOrValue(left), GetValue(exp, context, semanticModel, method)));
+            var l = new LVariableOrValue(left);
+            method.Emit(new Code_Assign(l, GetValue(exp, context, semanticModel, method)));
+            return l;
         }
 
         public abstract Type Syntax { get; }
@@ -289,5 +291,55 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
         }
     }
 
+    internal class AssignmentExpressionHandle : ExpressionHandle
+    {
+        public override Type Syntax => typeof(AssignmentExpressionSyntax);
 
+        public override LVariableOrValue DoGetValue(ExpressionSyntax syntax, CompileContext context, SemanticModel semanticModel, LMethod method)
+        {
+            Debug.Assert(syntax is AssignmentExpressionSyntax);
+            AssignmentExpressionSyntax aes = (AssignmentExpressionSyntax)syntax;
+
+            var left = GetValue(aes.Left, context, semanticModel, method);
+            Debug.Assert(left.Variable != null);
+            return Assign(left.Variable, aes.Right, context, semanticModel, method);
+        }
+    }
+
+    internal class MemberAccessExpressionHandle : ExpressionHandle
+    {
+        public override Type Syntax => typeof(MemberAccessExpressionSyntax);
+        public override LVariableOrValue DoGetValue(ExpressionSyntax syntax, CompileContext context, SemanticModel semanticModel, LMethod method)
+        {
+            Debug.Assert(syntax is MemberAccessExpressionSyntax);
+            MemberAccessExpressionSyntax maes = (MemberAccessExpressionSyntax)syntax;
+            LVariableOrValue? res = null;
+            // left.right such as a.b
+            if ((res = CheckSensor(maes, maes.Expression, maes.Name, context, semanticModel, method)) != null)
+            {
+                return res;
+            }
+            var left = GetValue(maes.Expression, context, semanticModel, method);
+            return null;
+        }
+
+        private LVariableOrValue? CheckSensor(MemberAccessExpressionSyntax maes, ExpressionSyntax left, SimpleNameSyntax right, CompileContext context, SemanticModel semanticModel, LMethod method)
+        {
+            if (left is not IdentifierNameSyntax name)
+                return null;
+            var type = semanticModel.GetTypeInfo(left).Type!;
+            if (context.TypeUtility.IsSonOf(type, typeof(GameObject))
+                && context.TypeUtility.HasAttribute(semanticModel.GetSymbolInfo(right).Symbol!, typeof(GameSensorFieldAttribute)))
+            {
+                LVariableOrValue result = new LVariableOrValue(method.VariableTable.Add(semanticModel.GetTypeInfo(maes).Type!));
+                var obj = new LVariableOrValue(method.VariableTable.Add(type, semanticModel.GetSymbolInfo(left).Symbol!, $"{name.Identifier.Value}"));
+                // game var
+                // a.@b    Identifier.Text:@b   Identifier.Value:b
+                method.Emit(new Code_Sensor(result, obj, "@" + (string)right.Identifier.Value!));
+                return result;
+            }
+            return null;
+        }
+
+    }
 }

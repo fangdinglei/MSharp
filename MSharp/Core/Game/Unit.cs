@@ -3,8 +3,189 @@ using System;
 
 namespace MSharp.Core.Game
 {
+    /// <summary>
+    /// <see href="https://www.mindustry-logic.xyz"/>
+    /// </summary>
     [GameIgnore]
-    public class GameObject { }
+    public class GameObject
+    {//TODO 检查类型
+        /// <summary>
+        /// 物品总数量
+        /// </summary>
+        [GameSensorField] public double @totalItems;
+        /// <summary>
+        /// 第一个物品
+        /// </summary>
+        [GameSensorField] public object @firstItem;
+        /// <summary>
+        /// 液体总数量
+        /// </summary>
+        [GameSensorField] public double @totalLiquids;
+
+        /// <summary>
+        /// 总存储电量？？;
+        /// </summary>
+        [GameSensorField] public double @totalPower;
+
+        /// <summary>
+        /// 单个物品容量 如核心只获取一个物体的容量
+        /// </summary>
+        [GameSensorField] public double @itemCapacity;
+        /// <summary>
+        /// 单个液体容量
+        /// <see cref="@itemCapacity">
+        /// </summary>
+        [GameSensorField] public double @liquidCapacity;
+        /// <summary>
+        /// 电量容量
+        /// </summary>
+        [GameSensorField] public double @powerCapacity;
+        /// <summary>
+        /// 电网电力存量
+        /// </summary>
+        [GameSensorField] public double @powerNetStored;
+        /// <summary>
+        /// 电网容量
+        /// </summary>
+        [GameSensorField] public double @powerNetCapacity;
+        /// <summary>
+        /// 电网输出
+        /// </summary>
+        [GameSensorField] public double powerNetIn;
+        /// <summary>
+        /// 电网消耗
+        /// </summary>
+        [GameSensorField] public double powerNetOut;
+
+        /// <summary>
+        /// 获取这个建筑物/单位内的子弹量
+        /// </summary>
+        [GameSensorField] public double @ammo;
+        /// <summary>
+        /// 获取这个建筑物/单位内的子弹量上限
+        /// </summary>
+        [GameSensorField] public double @ammoCapacity;
+        /// <summary>
+        /// 获取这个建筑物/单位的生命值
+        /// </summary>
+        [GameSensorField] public double @health;
+        /// <summary>
+        ///  获取这个建筑物/单位的生命值上限
+        /// </summary>
+        [GameSensorField] public double @maxHealth;
+        /// <summary>
+        /// 获取这个建筑物/单位的发热(主要是核反应堆)
+        /// </summary>
+        [GameSensorField] public double @heat;
+        /// <summary>
+        /// 获取这个建筑物/单位的效率
+        /// </summary>
+        [GameSensorField] public double @efficiency;
+        /// <summary>
+        /// 获取这个建筑物/单位的时间流速
+        /// </summary>
+        [GameSensorField] public double @timescale;
+        /// <summary>
+        /// 获取这个炮塔/单位的旋转角度,建筑物则获取朝向(0为沿建筑物x轴方向, 逆时针)
+        /// </summary>
+        [GameSensorField] public double @rotation;
+        /// <summary>
+        /// 获取这个建筑物/单位的x坐标
+        /// </summary>
+        [GameSensorField] public double @x;
+        /// <summary>
+        /// 获取这个建筑物/单位的y坐标
+        /// </summary>
+        [GameSensorField] public double @y;
+        /// <summary>
+        /// 获取这个建筑物/单位的射击x坐标
+        /// </summary>
+        [GameSensorField] public double @shootX;
+        /// <summary>
+        /// 获取这个建筑物/单位的射击y坐标
+        /// </summary>
+        [GameSensorField] public double @shootY;
+        /// <summary>
+        /// 获取这个建筑物/单位的大小(正方形边长大小)
+        /// </summary>
+        [GameSensorField] public double @size;
+        /// <summary>
+        /// 获取这个建筑物/单位是否失效(被摧毁返回1 有效返回0)
+        /// </summary>
+        [GameSensorField] public double @dead;
+        /// <summary>
+        /// 获取这个建筑物/单位的攻击范围
+        /// </summary>
+        [GameSensorField] public double @range;
+        /// <summary>
+        /// 获取这个建筑物/单位的攻击状态(开火返回1 停火返回0)
+        /// </summary>
+        [GameSensorField] public double @shooting;
+        /// <summary>
+        /// 获取这个单位的飞行状态
+        /// </summary>
+        [GameSensorField] public double @boosting;
+        /// <summary>
+        /// 获取这个单位的挖矿x坐标
+        /// </summary>
+        [GameSensorField] public double @mineX;
+        /// <summary>
+        /// 获取这个单位的挖矿y坐标
+        /// </summary>
+        [GameSensorField] public double @mineY;
+        /// <summary>
+        ///  获取这个单位的挖矿状态
+        /// </summary>
+        [GameSensorField] public double @mining;
+        /// <summary>
+        /// 获取这个建筑物/单位的阵营
+        /// </summary>
+        [GameSensorField] public double @team;
+        /// <summary>
+        /// 返回这个建筑物/单位的类型
+        /// </summary>
+        [GameSensorField] public double @type;
+        /// <summary>
+        ///  返回这个建筑物/单位的数字标记
+        /// </summary>
+        [GameSensorField] public double @flag;
+        /// <summary>
+        /// 返回这个建筑物/单位是否被控制(处理器返回1 玩家返回2 编队返回3 如果都不是返回0)
+        /// </summary>
+        [GameSensorField] public double @controlled;
+        /// <summary>
+        /// 返回一个单位的控制者(如果是处理器返回processor 编队返回 leader 如果都不是返回 itself)
+        /// </summary>
+        [GameSensorField] public double @controller;
+        /// <summary>
+        /// 不建议使用 将被移除 使用<see cref="@controlled">替代它
+        /// </summary>
+        [GameSensorField] public double @commanded;
+        /// <summary>
+        /// 返回被标记单位控制者名字
+        /// </summary>
+        [GameSensorField] public double @name;
+        /// <summary>
+        /// 获取这个单位的配置(如工厂生产的物品)
+        /// </summary>
+        [GameSensorField] public double @config;
+        /// <summary>
+        /// 获取单位的载荷数量
+        /// </summary>
+        [GameSensorField] public double @payloadCount;
+        /// <summary>
+        /// 获取单位的载荷类型
+        /// </summary>
+        [GameSensorField] public double @payloadType;
+        /// <summary>
+        /// 获取这个建筑物/单位的开启状态
+        /// </summary>
+        [GameSensorField] public double @enabled;
+        /// <summary>
+        /// 获取这个建筑物的配置(常用于分类器)
+        /// </summary>
+        [GameSensorField] public object @configure;
+    }
     [GameIgnore]
     public class Building : GameObject
     {
@@ -141,6 +322,49 @@ namespace MSharp.Core.Game
     [GameIgnore]
     public class Processor : Building
     {
+        //TODO 检查类型
+        /// <summary>
+        /// 自1970年1月1日到现在经过的毫秒
+        /// </summary>
+        public double @time;
+        /// <summary>
+        ///  指向当前对象自己
+        /// </summary>
+        public double @this;
+        /// <summary>
+        /// 获取当前对象自己的X坐标
+        /// </summary>
+        public double @thisx;
+        /// <summary>
+        ///  获取当前对象自己的Y坐标
+        /// </summary>
+        public double @thisy;
+        /// <summary>
+        /// 空气
+        /// </summary>
+        public double @air;
+        /// <summary>
+        /// 不可通过墙
+        /// </summary>
+        public double @soild;
+        /// <summary>
+        /// 绑定方块数
+        /// </summary>
+        public double @links;
+        /// <summary>
+        /// 逻辑执行行数
+        /// </summary>
+        public double @counter;
+        /// <summary>
+        /// 当前绑定单位
+        /// </summary>
+        public double @unit;
+        /// <summary>
+        /// 每tick执行行数
+        /// </summary>
+        public double @ipt;
+
+
 
         static public void UnitBind(string type) { }
         /// <summary>

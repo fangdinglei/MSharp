@@ -23,6 +23,9 @@ namespace MSharp.UserCode
         {
             float a = -1 + (+2.1f);
             float b = a + a;
+            b = a;
+            double c;
+            c = cell1.@y;
             //b = a;
             //int a = 1;
             //int b = a + 

@@ -87,31 +87,6 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method
 
             Console.WriteLine(1);
 
-            /**
-             * TODO 游戏代码创建
-             *          中间代码生成
-             *              游戏操作
-             *                  sensor working
-             *              基础语句
-             *                  字面量     almost done
-             *                  二元运算    almost done
-             *                  单目运算    working
-             *              复杂结构
-             *                  条件语句
-             *                  goto
-             *                  循环
-             *                  堆栈调用
-             *              内联编译
-             *          中间代码优化
-             * TODO 代码执行预览
-             * TODO 常量
-             * TODO links处理优化
-             * TODO ExpressionHandle优化
-             *          参数结构化
-             *          文件结构优化，只暴露ExpressionHandle
-             * 
-             */
-
         }
 
         public void AnalyzeCPUClass(CompileContext context, INamedTypeSymbol classSymbol, LClass @class)

@@ -44,17 +44,39 @@ namespace MSharp.Core.CodeAnalysis
     /// </summary>
     internal class LVariable
     {
-        public LMethod Method;
+        public LMethod? Method;
         public int? Index;
         public string? Name;
         public ITypeSymbol Type;
         public ISymbol? Symbol;
+        /// <summary>
+        /// 对象访问的左值
+        /// </summary>
+        public LVariable? Father;
 
         public bool IsTemp;
+        /// <summary>
+        /// 是字段
+        /// </summary>
+        public bool IsField => Father != null;
+        public bool IsLocalVar => Method != null;
 
-        public string RealName => (Index.HasValue ? "var" + Index : Name);
+        public string RealName => (Index.HasValue ? "var" + Index : Name)!;
 
-        public LVariable(LMethod method, string name, ITypeSymbol type, ISymbol symbol)
+        /// <summary>
+        /// 成员变量
+        /// </summary>
+        /// <param name="name"></param>
+        /// <param name="type"></param>
+        /// <param name="symbol"></param>
+        public LVariable(string name, ITypeSymbol type, ISymbol symbol)
+        {
+            Name = name;
+            Type = type;
+            Symbol = symbol;
+        }
+
+        public LVariable(LMethod method, string name, ITypeSymbol type, ISymbol symbol, LVariable? field=null)
         {
             Method = method;
             Name = name;
@@ -70,7 +92,7 @@ namespace MSharp.Core.CodeAnalysis
             IsTemp = true;
         }
 
-        public LVariable(LMethod method, string name, int index, ITypeSymbol type, ISymbol? symbol)
+        public LVariable(LMethod method, string name, int index, ITypeSymbol type, ISymbol? symbol, LVariable? field)
         {
             Method = method;
             Index = index;
@@ -78,6 +100,7 @@ namespace MSharp.Core.CodeAnalysis
             Type = type;
             IsTemp = false;
             Symbol = symbol;
+            Father = field;
         }
 
 
@@ -125,7 +148,6 @@ namespace MSharp.Core.CodeAnalysis
         public LBlock? Block;
 
         public LVariableOrValue? Return;
-
 
 
         /// <summary>

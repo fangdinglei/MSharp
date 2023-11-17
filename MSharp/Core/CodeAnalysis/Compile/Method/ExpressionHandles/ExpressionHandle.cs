@@ -10,11 +10,20 @@ using System.Linq;
 
 namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
 {
+
     /// <summary>
     /// 表达式处理基类
     /// </summary>
     internal abstract class ExpressionHandle
     {
+        public record struct GetValueParameter(
+            ExpressionSyntax Syntax,
+            CompileContext Context,
+            SemanticModel SemanticMode,
+            LMethod Method,
+            bool Read = true
+        );
+
         static public Dictionary<Type, ExpressionHandle> _handles = new();
 
         static ExpressionHandle()
@@ -40,27 +49,27 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
                 });
         }
 
-        static public LVariableOrValue GetValue(ExpressionSyntax syntax, CompileContext context, SemanticModel semanticModel, LMethod method)
+        static public LVariableOrValue GetValue(GetValueParameter p)
         {
-            var type = syntax.GetType();
+            var type = p.Syntax.GetType();
             while (type != null && type != typeof(object))
             {
                 if (_handles.TryGetValue(type, out var handle))
-                    return handle.DoGetValue(syntax, context, semanticModel, method);
+                    return handle.DoGetValue(p);
                 type = type.BaseType;
             }
-            throw new Exception("TODO not support   " + syntax.ToString());
+            throw new Exception("TODO not support   " + p.Syntax.ToString());
         }
 
         static public LVariableOrValue Assign(LVariable left, ExpressionSyntax exp, CompileContext context, SemanticModel semanticModel, LMethod method)
         {
             var l = new LVariableOrValue(left);
-            method.Emit(new Code_Assign(l, GetValue(exp, context, semanticModel, method)));
+            method.Emit(new Code_Assign(l, GetValue(new(exp, context, semanticModel, method))));
             return l;
         }
 
         public abstract Type Syntax { get; }
-        public abstract LVariableOrValue DoGetValue(ExpressionSyntax syntax, CompileContext context, SemanticModel semanticModel, LMethod method);
+        public abstract LVariableOrValue DoGetValue(GetValueParameter p);
     }
 
     /// <summary>
@@ -74,16 +83,20 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
             { "-", MindustryOperatorKind.sub},
         };
         public override Type Syntax => typeof(BinaryExpressionSyntax);
-        public override LVariableOrValue DoGetValue(ExpressionSyntax syntax, CompileContext context, SemanticModel semanticModel, LMethod method)
+        public override LVariableOrValue DoGetValue(GetValueParameter p)
         {
+            var syntax = p.Syntax;
+            var semanticModel = p.SemanticMode;
+            var method = p.Method;
+            var context = p.Context;
             Debug.Assert(syntax is BinaryExpressionSyntax);
             var bes = (BinaryExpressionSyntax)syntax;
             var typeInfo = semanticModel.GetTypeInfo(bes);
             Debug.Assert(typeInfo.Type != null);
             var variable = new LVariableOrValue(method.VariableTable.Add(typeInfo.Type));
             var kind = BinaryOperatorMap[bes.OperatorToken.Text];
-            var left = GetValue(bes.Left, context, semanticModel, method);
-            var right = GetValue(bes.Right, context, semanticModel, method);
+            var left = GetValue(new(bes.Left, context, semanticModel, method));
+            var right = GetValue(new(bes.Right, context, semanticModel, method));
             method.Emit(new Code_Operation(kind, variable, left, right));
             return variable;
         }
@@ -96,8 +109,9 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
     {
         public override Type Syntax => typeof(LiteralExpressionSyntax);
 
-        public override LVariableOrValue DoGetValue(ExpressionSyntax syntax, CompileContext context, SemanticModel semanticModel, LMethod method)
+        public override LVariableOrValue DoGetValue(GetValueParameter p)
         {
+            var syntax = p.Syntax;
             Debug.Assert(syntax is LiteralExpressionSyntax);
             var les = (LiteralExpressionSyntax)syntax;
             return new LVariableOrValue(les.Token.Value);
@@ -110,14 +124,17 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
     {
         public override Type Syntax => typeof(IdentifierNameSyntax);
 
-        public override LVariableOrValue DoGetValue(ExpressionSyntax syntax, CompileContext context, SemanticModel semanticModel, LMethod method)
+        public override LVariableOrValue DoGetValue(GetValueParameter p)
         {
+            var syntax = p.Syntax;
+            var semanticModel = p.SemanticMode;
+            var method = p.Method;
+            var context = p.Context;
             Debug.Assert(syntax is IdentifierNameSyntax);
             var lns = (IdentifierNameSyntax)syntax;
             //TODO 其他情况 这里这考虑本地变量
-#pragma warning disable CS8604
-            var v = method.VariableTable.Get(semanticModel.GetSymbolInfo(lns).Symbol);
-#pragma warning restore CS8604
+            var v = method.VariableTable.Get(semanticModel.GetSymbolInfo(lns).Symbol!);
+
             return new LVariableOrValue(v);
         }
     }
@@ -132,8 +149,12 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
             { "-", MindustryOperatorKind.sub},
         };
         public override Type Syntax => typeof(PrefixUnaryExpressionSyntax);
-        public override LVariableOrValue DoGetValue(ExpressionSyntax syntax, CompileContext context, SemanticModel semanticModel, LMethod method)
+        public override LVariableOrValue DoGetValue(GetValueParameter p)
         {
+            var syntax = p.Syntax;
+            var semanticModel = p.SemanticMode;
+            var method = p.Method;
+            var context = p.Context;
             Debug.Assert(syntax is PrefixUnaryExpressionSyntax);
             var pues = (PrefixUnaryExpressionSyntax)syntax;
             if (pues.OperatorToken.Text == "-")
@@ -185,10 +206,14 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
     {
         public override Type Syntax => typeof(ParenthesizedExpressionSyntax);
 
-        public override LVariableOrValue DoGetValue(ExpressionSyntax syntax, CompileContext context, SemanticModel semanticModel, LMethod method)
+        public override LVariableOrValue DoGetValue(GetValueParameter p)
         {
+            var syntax = p.Syntax;
+            var semanticModel = p.SemanticMode;
+            var method = p.Method;
+            var context = p.Context;
             Debug.Assert(syntax is ParenthesizedExpressionSyntax);
-            return GetValue(((ParenthesizedExpressionSyntax)syntax).Expression, context, semanticModel, method);
+            return GetValue(new(((ParenthesizedExpressionSyntax)syntax).Expression, context, semanticModel, method));
         }
     }
 
@@ -196,8 +221,12 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
     {
         public override Type Syntax => typeof(InvocationExpressionSyntax);
 
-        public override LVariableOrValue DoGetValue(ExpressionSyntax syntax, CompileContext context, SemanticModel semanticModel, LMethod method)
+        public override LVariableOrValue DoGetValue(GetValueParameter p)
         {
+            var syntax = p.Syntax;
+            var semanticModel = p.SemanticMode;
+            var method = p.Method;
+            var context = p.Context;
             Debug.Assert(syntax is InvocationExpressionSyntax);
 
             InvocationExpressionSyntax ies = (InvocationExpressionSyntax)syntax;
@@ -251,7 +280,7 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
                             {
                                 // 正常解析
                                 var arg = ies.ArgumentList.Arguments[i];
-                                variableOrValue = ExpressionHandle.GetValue(arg.Expression, context, semanticModel, method);
+                                variableOrValue = ExpressionHandle.GetValue(new(arg.Expression, context, semanticModel, method));
                             }
                             else
                             {
@@ -295,12 +324,16 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
     {
         public override Type Syntax => typeof(AssignmentExpressionSyntax);
 
-        public override LVariableOrValue DoGetValue(ExpressionSyntax syntax, CompileContext context, SemanticModel semanticModel, LMethod method)
+        public override LVariableOrValue DoGetValue(GetValueParameter p)
         {
+            var syntax = p.Syntax;
+            var semanticModel = p.SemanticMode;
+            var method = p.Method;
+            var context = p.Context;
             Debug.Assert(syntax is AssignmentExpressionSyntax);
             AssignmentExpressionSyntax aes = (AssignmentExpressionSyntax)syntax;
 
-            var left = GetValue(aes.Left, context, semanticModel, method);
+            var left = GetValue(new(aes.Left, context, semanticModel, method));
             Debug.Assert(left.Variable != null);
             return Assign(left.Variable, aes.Right, context, semanticModel, method);
         }
@@ -309,17 +342,33 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
     internal class MemberAccessExpressionHandle : ExpressionHandle
     {
         public override Type Syntax => typeof(MemberAccessExpressionSyntax);
-        public override LVariableOrValue DoGetValue(ExpressionSyntax syntax, CompileContext context, SemanticModel semanticModel, LMethod method)
+        public override LVariableOrValue DoGetValue(GetValueParameter p)
         {
+            var syntax = p.Syntax;
+            var semanticModel = p.SemanticMode;
+            var method = p.Method;
+            var context = p.Context;
             Debug.Assert(syntax is MemberAccessExpressionSyntax);
             MemberAccessExpressionSyntax maes = (MemberAccessExpressionSyntax)syntax;
             LVariableOrValue? res = null;
+
+            var left = GetValue(new(maes.Expression, context, semanticModel, method));
+            var right= new LVariable();
+            Debug.Assert(left.IsVariable, "member access:left value must be variable");
+            if (p.Read)
+            {
+                right.Father = left.Variable;
+            }
+            else
+            { 
+                
+            }
             // left.right such as a.b
             if ((res = CheckSensor(maes, maes.Expression, maes.Name, context, semanticModel, method)) != null)
             {
                 return res;
             }
-            var left = GetValue(maes.Expression, context, semanticModel, method);
+           
             return null;
         }
 

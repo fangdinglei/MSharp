@@ -1,6 +1,6 @@
 ﻿using MSharp.Core.Shared;
 using System;
-
+#pragma warning disable IDE1006,CS8618 // 命名样式
 namespace MSharp.Core.Game
 {
     /// <summary>
@@ -12,188 +12,207 @@ namespace MSharp.Core.Game
         /// <summary>
         /// 物品总数量
         /// </summary>
-        [GameSensorField] public double @totalItems;
+        [GameObjectData] public double @totalItems { get; }
         /// <summary>
         /// 第一个物品
         /// </summary>
-        [GameSensorField] public object @firstItem;
+        [GameObjectData] public object @firstItem { get; }
         /// <summary>
         /// 液体总数量
         /// </summary>
-        [GameSensorField] public double @totalLiquids;
+        [GameObjectData] public double @totalLiquids { get; }
 
         /// <summary>
         /// 总存储电量？？;
         /// </summary>
-        [GameSensorField] public double @totalPower;
+        [GameObjectData] public double @totalPower { get; }
 
         /// <summary>
         /// 单个物品容量 如核心只获取一个物体的容量
         /// </summary>
-        [GameSensorField] public double @itemCapacity;
+        [GameObjectData] public double @itemCapacity { get; }
         /// <summary>
         /// 单个液体容量
         /// <see cref="@itemCapacity">
         /// </summary>
-        [GameSensorField] public double @liquidCapacity;
+        [GameObjectData] public double @liquidCapacity { get; }
         /// <summary>
         /// 电量容量
         /// </summary>
-        [GameSensorField] public double @powerCapacity;
+        [GameObjectData] public double @powerCapacity { get; }
         /// <summary>
         /// 电网电力存量
         /// </summary>
-        [GameSensorField] public double @powerNetStored;
+        [GameObjectData] public double @powerNetStored { get; }
         /// <summary>
         /// 电网容量
         /// </summary>
-        [GameSensorField] public double @powerNetCapacity;
+        [GameObjectData] public double @powerNetCapacity { get; }
         /// <summary>
         /// 电网输出
         /// </summary>
-        [GameSensorField] public double powerNetIn;
+        [GameObjectData] public double powerNetIn { get; }
         /// <summary>
         /// 电网消耗
         /// </summary>
-        [GameSensorField] public double powerNetOut;
+        [GameObjectData] public double powerNetOut { get; }
 
         /// <summary>
         /// 获取这个建筑物/单位内的子弹量
         /// </summary>
-        [GameSensorField] public double @ammo;
+        [GameObjectData] public double @ammo { get; }
         /// <summary>
         /// 获取这个建筑物/单位内的子弹量上限
         /// </summary>
-        [GameSensorField] public double @ammoCapacity;
+        [GameObjectData] public double @ammoCapacity { get; }
         /// <summary>
         /// 获取这个建筑物/单位的生命值
         /// </summary>
-        [GameSensorField] public double @health;
+        [GameObjectData] public double @health { get; }
         /// <summary>
         ///  获取这个建筑物/单位的生命值上限
         /// </summary>
-        [GameSensorField] public double @maxHealth;
+        [GameObjectData] public double @maxHealth { get; }
         /// <summary>
         /// 获取这个建筑物/单位的发热(主要是核反应堆)
         /// </summary>
-        [GameSensorField] public double @heat;
+        [GameObjectData] public double @heat { get; }
         /// <summary>
         /// 获取这个建筑物/单位的效率
         /// </summary>
-        [GameSensorField] public double @efficiency;
+        [GameObjectData] public double @efficiency { get; }
         /// <summary>
         /// 获取这个建筑物/单位的时间流速
         /// </summary>
-        [GameSensorField] public double @timescale;
+        [GameObjectData] public double @timescale { get; }
         /// <summary>
         /// 获取这个炮塔/单位的旋转角度,建筑物则获取朝向(0为沿建筑物x轴方向, 逆时针)
         /// </summary>
-        [GameSensorField] public double @rotation;
+        [GameObjectData] public double @rotation { get; }
         /// <summary>
         /// 获取这个建筑物/单位的x坐标
         /// </summary>
-        [GameSensorField] public double @x;
+        [GameObjectData] public double @x { get; }
         /// <summary>
         /// 获取这个建筑物/单位的y坐标
         /// </summary>
-        [GameSensorField] public double @y;
+        [GameObjectData] public double @y { get; }
         /// <summary>
         /// 获取这个建筑物/单位的射击x坐标
         /// </summary>
-        [GameSensorField] public double @shootX;
+        [GameObjectData] public double @shootX { get; }
         /// <summary>
         /// 获取这个建筑物/单位的射击y坐标
         /// </summary>
-        [GameSensorField] public double @shootY;
+        [GameObjectData] public double @shootY { get; }
         /// <summary>
         /// 获取这个建筑物/单位的大小(正方形边长大小)
         /// </summary>
-        [GameSensorField] public double @size;
+        [GameObjectData] public double @size { get; }
         /// <summary>
         /// 获取这个建筑物/单位是否失效(被摧毁返回1 有效返回0)
         /// </summary>
-        [GameSensorField] public double @dead;
+        [GameObjectData] public double @dead { get; }
         /// <summary>
         /// 获取这个建筑物/单位的攻击范围
         /// </summary>
-        [GameSensorField] public double @range;
+        [GameObjectData] public double @range { get; }
         /// <summary>
         /// 获取这个建筑物/单位的攻击状态(开火返回1 停火返回0)
         /// </summary>
-        [GameSensorField] public double @shooting;
-        /// <summary>
-        /// 获取这个单位的飞行状态
-        /// </summary>
-        [GameSensorField] public double @boosting;
-        /// <summary>
-        /// 获取这个单位的挖矿x坐标
-        /// </summary>
-        [GameSensorField] public double @mineX;
-        /// <summary>
-        /// 获取这个单位的挖矿y坐标
-        /// </summary>
-        [GameSensorField] public double @mineY;
-        /// <summary>
-        ///  获取这个单位的挖矿状态
-        /// </summary>
-        [GameSensorField] public double @mining;
+        [GameObjectData] public double @shooting { get; }
         /// <summary>
         /// 获取这个建筑物/单位的阵营
         /// </summary>
-        [GameSensorField] public double @team;
+        [GameObjectData] public double @team { get; }
         /// <summary>
         /// 返回这个建筑物/单位的类型
         /// </summary>
-        [GameSensorField] public double @type;
+        [GameObjectData] public double @type { get; }
         /// <summary>
         ///  返回这个建筑物/单位的数字标记
         /// </summary>
-        [GameSensorField] public double @flag;
+        [GameObjectData] public double @flag { get; }
         /// <summary>
         /// 返回这个建筑物/单位是否被控制(处理器返回1 玩家返回2 编队返回3 如果都不是返回0)
         /// </summary>
-        [GameSensorField] public double @controlled;
-        /// <summary>
-        /// 返回一个单位的控制者(如果是处理器返回processor 编队返回 leader 如果都不是返回 itself)
-        /// </summary>
-        [GameSensorField] public double @controller;
+        [GameObjectData] public double @controlled { get; }
         /// <summary>
         /// 不建议使用 将被移除 使用<see cref="@controlled">替代它
         /// </summary>
-        [GameSensorField] public double @commanded;
+        [GameObjectData] public double @commanded { get; }
         /// <summary>
         /// 返回被标记单位控制者名字
         /// </summary>
-        [GameSensorField] public double @name;
-        /// <summary>
-        /// 获取这个单位的配置(如工厂生产的物品)
-        /// </summary>
-        [GameSensorField] public double @config;
+        [GameObjectData] public double @name { get; }
         /// <summary>
         /// 获取单位的载荷数量
         /// </summary>
-        [GameSensorField] public double @payloadCount;
+        [GameObjectData] public double @payloadCount { get; }
         /// <summary>
         /// 获取单位的载荷类型
         /// </summary>
-        [GameSensorField] public double @payloadType;
-        /// <summary>
-        /// 获取这个建筑物/单位的开启状态
-        /// </summary>
-        [GameSensorField] public double @enabled;
-        /// <summary>
-        /// 获取这个建筑物的配置(常用于分类器)
-        /// </summary>
-        [GameSensorField] public object @configure;
+        [GameObjectData] public double @payloadType { get; }
+
+        ///// <summary>
+        ///// 获取这个建筑物的配置(常用于分类器)
+        ///// </summary>
+        //[GameSensorField] public object @configure { get; set; }
     }
     [GameIgnore]
     public class Building : GameObject
     {
-
+        /// <summary>
+        /// 获取这个建筑物/单位的开启状态
+        /// </summary>
+        [GameObjectData] public bool @enabled { get; set; }
+       
+        /// <summary>
+        /// 获取这个单位的配置(如工厂生产的物品)
+        /// </summary>
+        [GameObjectData] public double @config;
+    }
+    [GameIgnore]
+    public class Lamp : Building
+    {
+        [GameObjectData] public double color { set; get; }
+    }
+    [GameIgnore]
+    public class Tower : Building
+    {
+        /// <summary>
+        /// x , y, shoot
+        /// </summary>
+        [GameObjectData] public ValueTuple<int, int, bool> shoot { set; private get; }
+        /// <summary>
+        /// target shoot
+        /// </summary>
+        [GameObjectData] public ValueTuple<GameObject, bool> shootp { set; private get; }
     }
     [GameIgnore]
     public class Unit : GameObject
     {
+        /// <summary>
+        /// 返回一个单位的控制者(如果是处理器返回 processor 编队返回 leader 如果都不是返回 itself)
+        /// </summary>
+        [GameObjectData] public double @controller { get; }
+        /// <summary>
+        /// 获取这个单位的飞行状态
+        /// </summary>
+        [GameObjectData] public double @boosting { get; }
+        /// <summary>
+        /// 获取这个单位的挖矿x坐标
+        /// </summary>
+        [GameObjectData] public double @mineX { get; }
+        /// <summary>
+        /// 获取这个单位的挖矿y坐标
+        /// </summary>
+        [GameObjectData] public double @mineY { get; }
+        /// <summary>
+        ///  获取这个单位的挖矿状态
+        /// </summary>
+        [GameObjectData] public double @mining { get; }
+
         /// <summary>
         /// 原地不动，但继续采矿/建造
         /// </summary>
@@ -381,6 +400,5 @@ namespace MSharp.Core.Game
         /// </summary>
         static public void Stop() { }
     }
-
-
 }
+#pragma warning restore IDE1006, CS8618 // 命名样式

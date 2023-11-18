@@ -2,10 +2,12 @@
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles;
+using MSharp.Core.CodeAnalysis.MindustryCode;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Xml.Linq;
 
 namespace MSharp.Core.CodeAnalysis.Compile.Method.StatementHandles
 {
@@ -68,10 +70,11 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.StatementHandles
             type = statement.GetType();
             if (!_handles.TryGetValue(type, out var handle))
             {
-                Console.WriteLine("语义分析：未知的语句类型" + type);
+                Console.WriteLine("语义分析：未知的语句类型\n" + statement);
                 return;
             }
             handle.Handle(new StatementHandleParameters(context, semanticModel, block, statement));
+            block.MergePostCodes();
         }
     }
 
@@ -82,6 +85,27 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.StatementHandles
         public StatementManager StatementManager = null!;
 
         public abstract void Handle(StatementHandleParameters parameters);
+
+        protected StatementSyntax[] GetStatements(StatementSyntax ss) {
+            StatementSyntax[] statements;
+            if (ss is BlockSyntax bs)
+            {
+                // while(){xxx}
+                // if(){xxx}
+                // ...
+                statements = bs.Statements.ToArray();
+            }
+            else
+            {
+                // while() xxx
+                // if() xxx
+                // ...
+                Debug.Assert(ss is ExpressionStatementSyntax);
+                ExpressionStatementSyntax ess = (ExpressionStatementSyntax)ss;
+                statements = new StatementSyntax[] { ess };
+            }
+            return statements;
+        }
     }
 
     internal class LocalVariableStatementHandle : StatementHandle
@@ -99,7 +123,7 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.StatementHandles
                 var var2 = p.Block.Method.VariableTable.Add(typeInfo.Type!, symbol!, variable.Identifier.ToString());
                 if (variable.Initializer != null)
                 {
-                    ExpressionHandle.Assign(var2, variable.Initializer!.Value, p.Context, p.SemanticModel, p.Block.Method);
+                    ExpressionHandle.Assign(var2, variable.Initializer!.Value, p.Context, p.SemanticModel, p.Block, p.Block.Method);
                 }
             }
         }
@@ -114,7 +138,181 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.StatementHandles
         public override void Handle(StatementHandleParameters p)
         {
             ExpressionStatementSyntax ess = (ExpressionStatementSyntax)p.Syntax;
-            ExpressionHandle.GetValue(ess.Expression, p.Context, p.SemanticModel, p.Block.Method);
+            ExpressionHandle.GetRight(new(ess.Expression, p.Context, p.SemanticModel, p.Block, p.Block.Method));
+        }
+    }
+
+    internal class IfStatementHandle : StatementHandle
+    {
+        public override List<Type> Types => new List<Type>() {
+            typeof(IfStatementSyntax) ,
+        };
+
+        public override void Handle(StatementHandleParameters p)
+        {
+            IfStatementSyntax iss = (IfStatementSyntax)p.Syntax;
+            var condition = ExpressionHandle.GetRight(new(iss.Condition, p.Context, p.SemanticModel, p.Block, p.Block.Method));
+            p.Block.MergePostCodes();
+            var body = iss.Statement;
+
+            var ifBlock = new LBlock(p.Block.Method);
+            StatementSyntax[] statements = GetStatements(body);
+
+            foreach (var item in statements)
+                p.Context.StatementManager.Handle(item, p.Context, p.SemanticModel, ifBlock);
+
+            // jump to else/else if/next
+            p.Block.Emit(new Code_Jump(out var jumpNext, Code_Jump.OpCode.notEqual, condition, new LVariableOrValue(1)));
+            // if body
+            p.Block.Emit(ifBlock.Codes);
+
+            p.Block.ReturnCall += (node) => ifBlock.ReturnCall(node);
+            p.Block.ContinueCall += (node) => ifBlock.ContinueCall(node);
+
+            if (iss.Else != null)
+            {
+                // else/else if
+                var elseStm = iss.Else.Statement;
+                var elseBlock = new LBlock(p.Block.Method);
+                Handle(new StatementHandleParameters(p.Context, p.SemanticModel, elseBlock, elseStm));
+                if (elseBlock.Codes.Count() != 0)
+                {
+                    // end of if : jump out
+                    p.Block.Emit(new Code_Jump(out var jumpOut, Code_Jump.OpCode.always));
+                    // jump here when if is not true
+                    jumpNext.To = elseBlock.Codes[0];
+                    // else if body
+                    p.Block.Emit(elseBlock.Codes);
+
+                    p.Block.ReturnCall += (node) => elseBlock.ReturnCall(node);
+                    p.Block.ContinueCall += (node) => elseBlock.ContinueCall(node);
+                    p.Block.NextCall += (node) => elseBlock.NextCall(node);
+                    // end of if : jump out
+                    p.Block.NextCall += (node) => jumpOut.To = node;
+                }
+
+            }
+            // if no else of else is empty,set jump next
+            if (jumpNext.To == null)
+            {
+                p.Block.NextCall += (node) => jumpNext.To = node;
+            }
+
+        }
+    }
+
+    internal class WhileStatementHandle : StatementHandle
+    {
+        public override List<Type> Types => new List<Type>() {
+            typeof(WhileStatementSyntax) ,
+        };
+
+        public override void Handle(StatementHandleParameters p)
+        {
+            WhileStatementSyntax wss = (WhileStatementSyntax)p.Syntax;
+
+            var whileBlock = new LBlock(p.Block.Method);
+            StatementSyntax[] statements = GetStatements(wss.Statement);
+
+
+            var conditionCodeStart = p.Block.Codes.Count;
+            var condition = ExpressionHandle.GetRight(new(wss.Condition, p.Context, p.SemanticModel, p.Block, p.Block.Method));
+            p.Block.MergePostCodes();
+
+            foreach (var item in statements)
+                p.Context.StatementManager.Handle(item, p.Context, p.SemanticModel, whileBlock);
+
+            if (whileBlock.Codes.Count>0)
+            {
+                // jump out of while
+                p.Block.Emit(new Code_Jump(out var jumpOut, Code_Jump.OpCode.notEqual, condition, new LVariableOrValue(1)));
+                // while body
+                p.Block.Emit(whileBlock.Codes);
+                // jump begin of while
+                p.Block.Emit(new Code_Jump(out var jumpBegin, Code_Jump.OpCode.always));
+                // continue in block  or  end of while should jump to begin
+                jumpBegin.To = p.Block.Codes[conditionCodeStart];
+                whileBlock.ContinueCall(jumpBegin.To);
+                // next of while block is 
+                whileBlock.NextCall(jumpBegin);
+                p.Block.ReturnCall += (node) => whileBlock.ReturnCall(node);
+
+                // register jump out
+                if (jumpOut != null)
+                    p.Block.NextCall += (node) => jumpOut.To = node;
+            }
+        }
+    }
+
+    internal class ForStatementHandle : StatementHandle
+    {
+        public override List<Type> Types => new List<Type>() {
+            typeof(ForStatementSyntax) ,
+        };
+
+        public override void Handle(StatementHandleParameters p)
+        {
+            ForStatementSyntax fss = (ForStatementSyntax)p.Syntax;
+
+            var forBlock = new LBlock(p.Block.Method);
+            StatementSyntax[] statements = GetStatements(fss.Statement);
+
+            foreach (var item in statements)
+                p.Context.StatementManager.Handle(item, p.Context, p.SemanticModel, forBlock);
+
+            // TODO fss.Declaration;
+           // fss.Declaration.
+
+
+            var conditionCodeStart = p.Block.Codes.Count;
+            Code_Jump? jumpOut=null;
+            if (fss.Condition!=null)
+            {
+                var condition = ExpressionHandle.GetRight(new(fss.Condition, p.Context, p.SemanticModel, p.Block, p.Block.Method));
+                p.Block.MergePostCodes();
+                if (forBlock.Codes.Count > 0 || fss.Incrementors.Count > 0)
+                {
+                    p.Block.Emit(new Code_Jump(out jumpOut, Code_Jump.OpCode.notEqual, condition, new LVariableOrValue(1)));
+                }
+            }
+            //TODO
+            var i= fss.Incrementors[0];
+         
+
+            if (forBlock.Codes.Count > 0)
+            {
+                // for body
+                p.Block.Emit(forBlock.Codes);
+
+
+                // for Incrementors
+                var incrementorsCodeStart = p.Block.Codes.Count;
+                foreach (var inc in fss.Incrementors)
+                {
+                    ExpressionHandle.GetRight(new ExpressionHandle.Parameter(inc ,p.Context,p.SemanticModel,p.Block,p.Block.Method));
+                    p.Block.MergePostCodes();
+                    // todo post++
+                }
+
+                if (incrementorsCodeStart == p.Block.Codes.Count)
+                {
+                    // empty Incrementors
+                    var node = p.Block.Codes[conditionCodeStart];
+                    forBlock.ContinueCall(node);
+                    forBlock.NextCall(node);
+                }
+                else {
+                    // not empty Incrementors
+                    var node = p.Block.Codes[incrementorsCodeStart];
+                    forBlock.ContinueCall(node);
+                    forBlock.NextCall(node);
+                }
+
+                p.Block.ReturnCall += (node) => forBlock.ReturnCall(node);
+            }
+            if (jumpOut!=null)
+                p.Block.NextCall += (node) => jumpOut.To = node;
+
         }
     }
 

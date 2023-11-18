@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Text;
 
 namespace MSharp.Core.CodeAnalysis
 {
@@ -38,46 +39,53 @@ namespace MSharp.Core.CodeAnalysis
             return res;
         }
     }
-
     /// <summary>
     /// 变量 一个同样的变量应该具有同样的引用
     /// </summary>
     internal class LVariable
     {
+        public enum VariableType
+        {
+            Temp,
+            LocalVar,
+            MemberVisit,
+            Field,
+        }
+
         public LMethod? Method;
         public int? Index;
         public string? Name;
-        public ITypeSymbol Type;
+        public ITypeSymbol? Type;
         public ISymbol? Symbol;
         /// <summary>
         /// 对象访问的左值
         /// </summary>
         public LVariable? Father;
 
-        public bool IsTemp;
-        /// <summary>
-        /// 是字段
-        /// </summary>
-        public bool IsField => Father != null;
-        public bool IsLocalVar => Method != null;
+        public readonly VariableType Kind;
 
         public string RealName => (Index.HasValue ? "var" + Index : Name)!;
 
         /// <summary>
-        /// 成员变量
+        /// member of obj
         /// </summary>
+        /// <param name="father"></param>
         /// <param name="name"></param>
-        /// <param name="type"></param>
-        /// <param name="symbol"></param>
-        public LVariable(string name, ITypeSymbol type, ISymbol symbol)
-        {
+        public LVariable(LVariable father,string name) {
+            Kind = VariableType.MemberVisit;
+              Father = father;
             Name = name;
-            Type = type;
-            Symbol = symbol;
         }
 
-        public LVariable(LMethod method, string name, ITypeSymbol type, ISymbol symbol, LVariable? field=null)
+        public LVariable(string name)
         {
+            Kind = VariableType.Field;
+            Name = name;
+        }
+
+        public LVariable(LMethod method, string name, ITypeSymbol type, ISymbol symbol)
+        {
+            Kind = VariableType.LocalVar;
             Method = method;
             Name = name;
             Type = type;
@@ -86,21 +94,21 @@ namespace MSharp.Core.CodeAnalysis
 
         public LVariable(LMethod method, int index, ITypeSymbol type)
         {
+            Kind = VariableType.Temp;
             Method = method;
             Index = index;
             Type = type;
-            IsTemp = true;
         }
 
-        public LVariable(LMethod method, string name, int index, ITypeSymbol type, ISymbol? symbol, LVariable? field)
+        public LVariable(LMethod method, string name, int index, ITypeSymbol? type, ISymbol? symbol, VariableType kind, LVariable? father = null)
         {
             Method = method;
             Index = index;
             Name = name;
             Type = type;
-            IsTemp = false;
             Symbol = symbol;
-            Father = field;
+            Father = father;
+            Kind = kind;
         }
 
 
@@ -118,7 +126,7 @@ namespace MSharp.Core.CodeAnalysis
 
         public bool IsVariable => Variable != null;
 
-        public string VariableOrValueString => Variable != null ? Variable.RealName : Value!.ToString()!;
+        public string VariableOrValueString => Variable != null ? Variable.RealName : Value is bool b?(b? "1" : "0"): Value!.ToString()!;
 
         public LVariableOrValue(object? value)
         {
@@ -148,6 +156,11 @@ namespace MSharp.Core.CodeAnalysis
         public LBlock? Block;
 
         public LVariableOrValue? Return;
+
+        /// <summary>
+        /// custom methods called in method 调用的自定义函数
+        /// </summary>
+        public SortedSet<LMethod> Calls = new SortedSet<LMethod>();
 
 
         /// <summary>
@@ -199,11 +212,6 @@ namespace MSharp.Core.CodeAnalysis
                 Block.Codes.Add(newCode);
             }
         }
-
-        public void Emit(BaseCode baseCode)
-        {
-            Console.WriteLine("emit " + baseCode.ToMindustryCodeString());
-        }
     }
     internal class LBlock
     {
@@ -211,18 +219,54 @@ namespace MSharp.Core.CodeAnalysis
         /// <summary>
         /// 代码
         /// </summary>
-        public readonly List<BaseCode> Codes = new List<BaseCode>();
+        public  List<BaseCode> Codes = new List<BaseCode>();
 
-        /// <summary>
-        /// custom methods called in method 调用的自定义函数
-        /// </summary>
-        public SortedSet<LMethod> Calls = new SortedSet<LMethod>();
+        public  Action<BaseCode> ReturnCall = (a) => { };
+
+        public  Action<BaseCode> ContinueCall = (a) => { };
+
+        public Action<BaseCode> NextCall = (a) => { };
+
+        public List<BaseCode> PostCodes = new List<BaseCode>();
 
         public LBlock(LMethod method)
         {
             Method = method;
         }
 
+        public void MergePostCodes() {
+            Emit(PostCodes);
+            PostCodes.Clear();
+        }
+
+        public void Emit(BaseCode baseCode)
+        {
+            NextCall(baseCode);
+            NextCall = (a) => { };
+            Codes.Add(baseCode);
+            Console.WriteLine("emit " + baseCode.ToMindustryCodeString());
+        }
+        public void Emit(List<BaseCode> baseCodes)
+        {
+            if (baseCodes.Count == 0)
+                return;
+            var first = baseCodes.First();
+            NextCall(first);
+            NextCall = (a) => { };
+            Codes.AddRange(baseCodes);
+        }
+
+
+
+        public override string ToString()
+        {
+            StringBuilder sb = new StringBuilder();
+            foreach (var item in Codes)
+            {
+                sb.AppendLine(item.ToMindustryCodeString());
+            }
+            return sb.ToString();
+        }
     }
 
     internal class VariableTable
@@ -264,7 +308,8 @@ namespace MSharp.Core.CodeAnalysis
 
         public LVariable Add(LVariable variable)
         {
-            if (!variable.IsTemp)
+            // 重命名
+            if (variable.Kind!= LVariable.VariableType.Temp )
             {
                 Debug.Assert(variable.Name != null);
                 // 如果没有，直接使用原名
@@ -276,7 +321,7 @@ namespace MSharp.Core.CodeAnalysis
                 // 使用自动生成的名称
                 while (true)
                 {
-                    var v = new LVariable(_method, variable.Name, ++ptr, variable.Type, variable.Symbol);
+                    var v = new LVariable(_method, variable.Name, ++ptr, variable.Type, variable.Symbol,variable.Kind,variable.Father);
                     if (defines.ContainsKey(v.RealName))
                         continue;
                     defines.Add(v.RealName, v);
@@ -291,10 +336,8 @@ namespace MSharp.Core.CodeAnalysis
                     var v = new LVariable(_method, ++ptr, variable.Type);
                     if (defines.ContainsKey(v.RealName))
                         continue;
-                    defines.Add(v.RealName, v);
-#pragma warning disable CS8604
-                    SymbolDict.Add(v.Symbol, v);
-#pragma warning restore CS8604
+                    defines.Add(v.RealName, v); 
+                    SymbolDict.Add(v.Symbol!, v);
                     return v;
                 }
             }
@@ -306,7 +349,11 @@ namespace MSharp.Core.CodeAnalysis
             //TODO
             return SymbolDict[symbol];
         }
-
+        public bool TryGet(ISymbol symbol,out LVariable? variable)
+        {
+            //TODO
+            return SymbolDict.TryGetValue(symbol,out variable);
+        }
         public ICollection<LVariable> GetAll()
         {
             return defines.Values;

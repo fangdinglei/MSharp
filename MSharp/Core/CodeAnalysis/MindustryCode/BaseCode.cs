@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 
 namespace MSharp.Core.CodeAnalysis.MindustryCode
 {
@@ -21,8 +22,9 @@ namespace MSharp.Core.CodeAnalysis.MindustryCode
     }
     internal abstract class BaseCode
     {
-        protected List<LVariableOrValue> _variables = new List<LVariableOrValue>();
-        public IReadOnlyList<LVariableOrValue> Variables => _variables;
+        protected HashSet<LVariableOrValue> _variables = new HashSet<LVariableOrValue>();
+        public IReadOnlyList<LVariableOrValue> Variables => _variables.ToList();
+        public int Index=-1;
 
 
         public BaseCode DeepClone()
@@ -31,6 +33,32 @@ namespace MSharp.Core.CodeAnalysis.MindustryCode
         }
 
         public abstract string ToMindustryCodeString();
+
+        protected string ToString(List<object> list)
+        {
+            string res = "";
+            foreach (object o in list)
+            {
+                Debug.Assert(o is not LVariable, $"tuple or list should contain {nameof(LVariableOrValue)} instead of {nameof(LVariable)}");
+                var obj = o;
+                if (obj is LVariableOrValue v )
+                {
+                    if (v.IsVariable)
+                    { // var
+                        res += v.VariableOrValueString + " ";
+                        continue;
+                    }
+                    // value
+                    obj = v.Value!;
+                }
+                // value
+                if (obj is bool b)
+                    obj = b ? 1 : 0;
+                res += obj + " ";
+            }
+            return res.TrimEnd();
+        }
+
     }
     /// <summary>
     /// 命名与像素工厂代码命名一致 方便转换 特别的相反的两个逻辑判断(<![CDATA[< <= > >= = !=]]>)枚举的值 xor后结果为1
@@ -179,8 +207,8 @@ namespace MSharp.Core.CodeAnalysis.MindustryCode
             Result = result;
             _variables.Add(op1);
             _variables.Add(op2);
+            _variables.Add(Result);
         }
-
         public override string ToMindustryCodeString()
         {
             // sample  op mul val num1 num2
@@ -192,11 +220,11 @@ namespace MSharp.Core.CodeAnalysis.MindustryCode
     {
         public readonly LVariableOrValue Left;
         public readonly LVariableOrValue Right;
-        public Code_Assign(LVariableOrValue left, LVariableOrValue right)
+        public Code_Assign(LVariable left, LVariableOrValue right)
         {
-            Left = left;
+            Left = new LVariableOrValue(left);
             Right = right;
-            _variables.Add(left);
+            _variables.Add(Left);
             _variables.Add(right);
         }
 
@@ -227,5 +255,109 @@ namespace MSharp.Core.CodeAnalysis.MindustryCode
             return $"sensor {Result.VariableOrValueString} {Object.VariableOrValueString} {Member}";
         }
     }
+    internal class Code_Control : BaseCode
+    {
+        public readonly LVariableOrValue Left;
+        public readonly LVariableOrValue Right;
+        public Code_Control(LVariable left, LVariableOrValue right)
+        {
+            Left = new LVariableOrValue(left);
+            Right = right;
+            _variables.Add(Left);
+            _variables.Add(right);
+        }
 
+        public override string ToMindustryCodeString()
+        {
+            // sample control enabled block1 1 0 0 0
+            // sample control shoot cell1 2 2 3 0
+            string right;
+            if (Right.IsVariable)
+            {
+                // var
+                right = Right.VariableOrValueString;
+            }
+            else if (Right.Value is List<object> ls)
+            {
+                // tuple or list
+                right = ToString(ls);
+            }
+            else
+            {
+                // value
+                right = Right.VariableOrValueString.ToString();
+            }
+            return $"control {Left.Variable!.RealName} {Left.Variable!.Father!.RealName} {right}";
+        }
+    }
+    internal class Code_Jump : BaseCode
+    {
+        public enum OpCode {
+            /// <summary>
+            /// =
+            /// </summary>
+            equal = 0,
+            /// <summary>
+            /// !=
+            /// </summary>
+            notEqual = 1,
+            /// <summary>
+            /// >=
+            /// </summary>
+            greaterThanEq = 2,
+            /// <summary>
+            /// <![CDATA[<]]>
+            /// </summary>
+            lessThan = 3,
+            /// <summary>
+            /// <![CDATA[<=]]>
+            /// </summary>
+            lessThanEq = 4,
+            /// <summary>
+            /// >
+            /// </summary>
+            greaterThan = 5,
+            /// <summary>
+            /// ALWAYS
+            /// </summary>
+            always = 6,
+            // === not allowed
+            strictEqual = 8,
+        }
+
+        public  BaseCode? To;
+        public readonly OpCode Op;
+        public readonly LVariableOrValue? Left;
+        public readonly LVariableOrValue? Right;
+
+        public Code_Jump(out Code_Jump me, OpCode op, LVariableOrValue? left=null, LVariableOrValue? right= null)
+        {
+            Op = op;
+            Left = left;
+            Right = right;
+            me = this;
+        }
+
+        public override string ToMindustryCodeString()
+        {
+            // jump 1 equal x false
+            // jump 1 notEqual x false
+            // jump 1 lessThan x false
+            // jump 1 lessThanEq x false
+            // jump 1 greaterThan x false
+            // jump 1 greaterThanEq x false
+            // jump 1 strictEqual x false
+            // jump 1 always x false
+            return $"jump {To?.Index ?? -1} {Op} {(Left != null ? Left.VariableOrValueString : "false")} {(Right != null ? Right.VariableOrValueString : "false")}";
+        }
+
+    }
+
+    internal class Code_Empty : BaseCode
+    {
+        public override string ToMindustryCodeString()
+        {
+            return "empty:should be removed";
+        }
+    }
 }

@@ -29,12 +29,12 @@ class Program2
             {
                 public class TestCPU : GameCPU
                 {
-                    public Memory cell1=new Memory();
+                    public Memory tower=new Memory();
                 
                     public override void Main()
                     {
 int a=0; self=null;
-                        cell1.Write(1,1);
+                        tower.Write(1,1);
                     }
                 }
 
@@ -305,7 +305,7 @@ int a=0; self=null;
     //        var methodName = maes.Name.Identifier.ToString();
     //        if (method.VarTable.ContainsKey(objectName))
     //        { // 变量表中有该变量，可能是赋值过来的一个游戏对象
-    //            //cell1.Write(1, 1);
+    //            //tower.Write(1, 1);
     //        }
     //        else if (method.Parent.Connects.Contains(objectName))
     //        {

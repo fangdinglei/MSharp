@@ -147,6 +147,27 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
             return new LVariableOrValue(les.Token.Value);
         }
     }
+
+    internal class DeclarationExpressionHandle : ExpressionHandle
+    {
+        public override Type Syntax => typeof(DeclarationExpressionSyntax);
+
+        public override LVariableOrValue DoGetRight(Parameter p)
+        {
+            var syntax = p.Syntax;
+            Debug.Assert(syntax is DeclarationExpressionSyntax);
+            var les = (DeclarationExpressionSyntax)syntax;
+            var symbol = p.SemanticMode.GetSymbolInfo(les).Symbol!;
+            var type = p.SemanticMode.GetTypeInfo(les).Type!;
+            if (les.Designation is SingleVariableDesignationSyntax svds)
+            {
+                return new LVariableOrValue(p.Method.VariableTable.Add(type, symbol, (string)svds.Identifier.Value!));
+            }
+
+            throw new Exception();
+
+        }
+    }
     /// <summary>
     /// Variable 变量取值
     /// </summary>
@@ -175,6 +196,7 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
 
         public override LVariableOrValue DoAssign(Parameter p)
         {
+            // obtain the variable that needs to be assigned
             var left = DoGetRight(p).Variable!;
             p.Method.Block!.Emit(new Code_Assign(left, p.Right!));
             return new LVariableOrValue(left);
@@ -361,21 +383,26 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
                 // code like a.B(xxx);
                 // objectType like a.GetType
                 var objectType = semanticModel.GetTypeInfo(memberCall.Expression);
+                //var methodType = semanticModel.GetSymbolInfo(memberCall).Symbol as IMethodSymbol;
+                semanticModel.GetDeclaredSymbol(memberCall);
                 string? gameApiName = null;
                 bool needTarget = false;
                 int parameterCount = 0;
+                int targetIndex = 0;
                 var gameObjectCall = context.TypeUtility.IsSonOf(objectType.Type, typeof(GameObject))
-                    && GetGameApiName(semanticModel.GetSymbolInfo(memberCall).Symbol!, p.Context.TypeUtility, out gameApiName, out parameterCount, out needTarget);
+                    && GetGameApiName(semanticModel.GetSymbolInfo(memberCall).Symbol!, p.Context.TypeUtility, out gameApiName, out parameterCount, out needTarget, out targetIndex);
                 if (gameObjectCall)
                 {
-                    // Game API 游戏API调用，直接翻译
+                    // Parameters such as [ out int a ] can also be processed in this way, because in C #, their arguments can only be newly defined variables or previously defined variables
+                    // out int a 这样的参数在这里也可以这样被处理，因为在C#中他们的实参只能是新定义的变量或者之前定义的变量
                     var argList = ies.ArgumentList.Arguments
-                           .Select(arg => GetRight(p.WithExpression(arg.Expression)))
-                           .ToList();
+                          .Select(arg => GetRight(p.WithExpression(arg.Expression)))
+                          .ToList();
                     if (needTarget)
                     {
-                        argList.Insert(0, GetRight(p.WithExpression(memberCall.Expression)));
+                        argList.Insert(targetIndex, GetRight(p.WithExpression(memberCall.Expression)));
                     }
+
                     p.Block.Emit(new Code_Command(gameApiName!, parameterCount, LVariableOrValue.CreateList(argList.ToArray())));
 
                     return null;
@@ -457,19 +484,20 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
         }
 
         /// <summary>
-        /// 获取api的名称
+        /// 获取 api 的信息
         /// <br/> <see cref="GameApiAttribute"/>
         /// </summary>
         /// <param name="method"></param>
-        private bool GetGameApiName(ISymbol symbol, TypeUtility utility, out string? apiName, out int parameterCount, out bool needTarget)
+        private bool GetGameApiName(ISymbol symbol, TypeUtility utility, out string? apiName, out int parameterCount, out bool needTarget, out int targetIndex)
         {
-            apiName = null; parameterCount = 0; needTarget = false;
+            apiName = null; parameterCount = 0; needTarget = false; targetIndex = 0;
             var att = symbol!.GetAttributes().Where(it => utility.GetFullName(it!.AttributeClass!) == typeof(GameApiAttribute).FullName).FirstOrDefault();
             if (att == null)
                 return false;
             apiName = (string)att.ConstructorArguments[0].Value!;
             parameterCount = (int)att.ConstructorArguments[1].Value!;
             needTarget = (bool)att.ConstructorArguments[2].Value!;
+            targetIndex = (int)att.ConstructorArguments[3].Value!;
             return true;
         }
 
@@ -631,7 +659,6 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
             CastExpressionSyntax ces = (CastExpressionSyntax)syntax;
             return GetRight(p.WithExpression(ces.Expression));
         }
-
     }
 
 }

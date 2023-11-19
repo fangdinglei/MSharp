@@ -52,8 +52,8 @@ namespace MSharp.UserCode
             //@unit.Idle();
             //
             //@unit.Target(1, 2, true);
-            unit.Boost();
-            self.UnitBind(UnitConst.Mono);
+            unit.Boost(out var se);
+            self.UnitBind(UnitConst.Mono); 
 
         }
     }

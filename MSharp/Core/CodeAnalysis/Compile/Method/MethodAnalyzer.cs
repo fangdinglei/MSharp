@@ -115,7 +115,7 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method
         public void AnalyzeMethods(CompileContext context, Dictionary<string, IMethodSymbol> functions, SemanticModel semanticModel, LClass lClass)
         {
             foreach (var (name, func) in functions)
-            {
+            {// TODO 检查参数是否是 out 这样的
                 AnalyzeMethod(context, semanticModel, lClass, func);
 
             }

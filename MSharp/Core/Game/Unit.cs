@@ -165,12 +165,12 @@ namespace MSharp.Core.Game
         /// <summary>
         /// 获取这个建筑物/单位的开启状态
         /// </summary>
-        [GameObjectData] public bool @enabled { get; set; }
+        [GameObjectData] public bool @enabled { get; }
 
         /// <summary>
         /// 获取这个单位的配置(如工厂生产的物品)
         /// </summary>
-        [GameObjectData] public double @config { get; set; }
+        [GameObjectData] public double @config { get; }
 
         [GameApi("control enabled", 4, true)] public void SetEnabled(double enabled) { }
         [GameApi("control enabled", 4, true)] public void SetEnabled(bool enabled) { }
@@ -193,8 +193,15 @@ namespace MSharp.Core.Game
         //[Obsolete]
         //[GameApi("color")] public void Color(ColorData color) { }
     }
-    public class Message : Building { }
-    public class Display : Building { }
+
+    public class Message : Building
+    {
+        [GameApi("printflush", -1, true)] public void PrintFlush() { }
+    }
+    public class Display : Building
+    {
+        [GameApi("drawflush", -1, true)] public void DrawFlush() { }
+    }
 
     [GameIgnore]
     public class Tower : Building
@@ -265,9 +272,9 @@ namespace MSharp.Core.Game
         /// </summary>
         [GameApi("ucontrol autoPathfind", 5, false)] public void AutoPathFind() { }
         /// <summary>
-        /// 开始/结束 起飞
+        /// 开始/结束 起飞 参数暂时供测试使用，用完删除
         /// </summary>
-        [GameApi("ucontrol boost", 5, false)] public void Boost() { }
+        [GameApi("ucontrol boost", 5, false)] public void Boost(out int a) { a = 1; }
         /// <summary>
         /// 瞄准或开火
         /// </summary>
@@ -353,9 +360,9 @@ namespace MSharp.Core.Game
     [GameIgnore]
     public class Memory : GameObject
     {
-        public double Read(double at) { return 0; }
+        [GameApi("read", 3, true)] public double Read(double at) { return 0; }
 
-        public void Write(double value, double at) { }
+        [GameApi("write", 3, true)] public void Write(double value, double at) { }
     }
     [GameIgnore]
     public class Processor : Building

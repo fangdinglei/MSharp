@@ -7,7 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Linq.Expressions;
+using System.Reflection;
 
 namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
 {
@@ -23,16 +23,18 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
             SemanticModel SemanticMode,
             LBlock Block,
             LMethod Method,
-            LVariableOrValue? Right=null
+            LVariableOrValue? Right = null
         )
         {
-            public Parameter WithExpression(ExpressionSyntax expression) {
-                return new Parameter(expression,Context,SemanticMode,Block,Method);
+            public Parameter WithExpression(ExpressionSyntax expression)
+            {
+                return new Parameter(expression, Context, SemanticMode, Block, Method);
             }
 
-            public Parameter WithRight(LVariableOrValue right) {
+            public Parameter WithRight(LVariableOrValue right)
+            {
                 Right = right;
-                return new Parameter(Syntax, Context, SemanticMode, Block, Method,right);
+                return new Parameter(Syntax, Context, SemanticMode, Block, Method, right);
             }
 
         }
@@ -75,7 +77,7 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
         }
         static public LVariableOrValue Assign(Parameter p)
         {
-            Debug.Assert(p.Right!=null);
+            Debug.Assert(p.Right != null);
             var type = p.Syntax.GetType();
             while (type != null && type != typeof(object))
             {
@@ -85,7 +87,11 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
             }
             throw new Exception("TODO not support   " + p.Syntax.ToString());
         }
-
+        static public LVariableOrValue Assign(LVariable left, LVariableOrValue right, LBlock block)
+        {
+            block.Emit(new Code_Assign(left, right));
+            return right;
+        }
 
         public abstract Type Syntax { get; }
         public abstract LVariableOrValue DoGetRight(Parameter p);
@@ -157,7 +163,7 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
             var lns = (IdentifierNameSyntax)syntax;
             LVariable? res;
             //本地变量
-            method.VariableTable.TryGet(semanticModel.GetSymbolInfo(lns).Symbol!,out res);
+            method.VariableTable.TryGet(semanticModel.GetSymbolInfo(lns).Symbol!, out res);
             // 类成员
             if (res == null)
             {// todo 临时用一下
@@ -232,26 +238,42 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
             }
             else if (pues.OperatorToken.Text == "++")
             {
-                var w = new LVariableOrValue(Assign(p.WithExpression(pues.Operand)));
-                if (w.Variable!.Kind == LVariable.VariableType.MemberVisit)
-                {
-                    throw new Exception("++ -- not allowed to change game data");
-                }
-                p.Block.Emit(new Code_Operation(MindustryOperatorKind.add, w, w, new LVariableOrValue(1)));
-                return w;
+                return ProcessSelfIncreasingAndDecreasing(p.WithExpression(pues.Operand), MindustryOperatorKind.add);
             }
             else if (pues.OperatorToken.Text == "--")
             {
-                var w = new LVariableOrValue(Assign(p.WithExpression(pues.Operand)));
-                if (w.Variable!.Kind == LVariable.VariableType.MemberVisit)
-                {
-                    throw new Exception("++ -- not allowed to change game data");
-                }
-                p.Block.Emit(new Code_Operation(MindustryOperatorKind.sub, w, w, new LVariableOrValue(1)));
-                return w;
+                return ProcessSelfIncreasingAndDecreasing(p.WithExpression(pues.Operand), MindustryOperatorKind.sub);
             }
             throw new Exception();
         }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="p"></param>
+        /// <param name="op"></param>
+        /// <returns></returns>
+        static public LVariableOrValue ProcessSelfIncreasingAndDecreasing(Parameter p, MindustryOperatorKind op)
+        {
+            /**
+             *  this operation will be rewritten during the optimization phase
+             *  ++i
+             *  
+             *  op add var2 i 1
+             *  set i var2
+             *  
+             *  ++block1.@a
+             *  sensor var2 block1 @a
+             *  op add var3 var2 1
+             *  control xxx
+             */
+            var right = GetRight(p);
+            var var2 = new LVariableOrValue(p.Block.Method.VariableTable.Add(right.Variable!.Type!));
+            p.Block.Emit(new Code_Operation(MindustryOperatorKind.add, var2, right, new LVariableOrValue(1)));
+            Assign(p.WithRight(var2));
+            return var2;
+        }
+
     }
     internal class PostExpressionHandle : ExpressionHandle
     {
@@ -266,26 +288,25 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
             var pues = (PostfixUnaryExpressionSyntax)syntax;
 
             var right = GetRight(p.WithExpression(pues.Operand));
-      
+
             if (pues.OperatorToken.Text == "++")
             {
-                // Compatible with game data reading and writing
-                var res = new LVariableOrValue(p.Method.VariableTable.Add(right.Variable!.Type!));
-                p.Block.PostCodes.Add(new Code_Operation(MindustryOperatorKind.add, res, right, new LVariableOrValue(1)));
                 var t = p.Block.Codes;
                 p.Block.Codes = new List<BaseCode>();
-                Assign(p.WithExpression(pues.Operand).WithRight(res));
-                p.Block.PostCodes.InsertRange(0,p.Block.Codes);
+
+                var res = PrefixUnaryExpressionHandle.ProcessSelfIncreasingAndDecreasing(p.WithExpression(pues.Operand), MindustryOperatorKind.add);
+
+                p.Block.PostCodes.InsertRange(0, p.Block.Codes);
                 p.Block.Codes = t;
                 return res;
             }
             else if (pues.OperatorToken.Text == "--")
             {
-                 var res = new LVariableOrValue(p.Method.VariableTable.Add(right.Variable!.Type!));
-                p.Block.PostCodes.Add(new Code_Operation(MindustryOperatorKind.sub, res, right, new LVariableOrValue(1)));
                 var t = p.Block.Codes;
                 p.Block.Codes = new List<BaseCode>();
-                Assign(p.WithExpression(pues.Operand).WithRight(res));
+
+                var res = PrefixUnaryExpressionHandle.ProcessSelfIncreasingAndDecreasing(p.WithExpression(pues.Operand), MindustryOperatorKind.sub);
+
                 p.Block.PostCodes.InsertRange(0, p.Block.Codes);
                 p.Block.Codes = t;
                 return res;
@@ -311,6 +332,11 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
             Debug.Assert(syntax is ParenthesizedExpressionSyntax);
             return GetRight(p.WithExpression(((ParenthesizedExpressionSyntax)syntax).Expression));
         }
+
+        public override LVariableOrValue DoAssign(Parameter p)
+        {
+            return DoGetRight(p);
+        }
     }
 
     internal class InvocationExpressionHandle : ExpressionHandle
@@ -332,13 +358,28 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
 
             if (memberCall != null)
             {
-                // code like a.B();
+                // code like a.B(xxx);
                 // objectType like a.GetType
                 var objectType = semanticModel.GetTypeInfo(memberCall.Expression);
-                var gameObjectCall = context.TypeUtility.IsSonOf(objectType.Type, typeof(GameObject));
+                string? gameApiName = null;
+                bool needTarget = false;
+                int parameterCount = 0;
+                var gameObjectCall = context.TypeUtility.IsSonOf(objectType.Type, typeof(GameObject))
+                    && GetGameApiName(semanticModel.GetSymbolInfo(memberCall).Symbol!, p.Context.TypeUtility, out gameApiName, out parameterCount, out needTarget);
                 if (gameObjectCall)
                 {
                     // Game API 游戏API调用，直接翻译
+                    var argList = ies.ArgumentList.Arguments
+                           .Select(arg => GetRight(p.WithExpression(arg.Expression)))
+                           .ToList();
+                    if (needTarget)
+                    {
+                        argList.Insert(0, GetRight(p.WithExpression(memberCall.Expression)));
+                    }
+                    p.Block.Emit(new Code_Command(gameApiName!, parameterCount, LVariableOrValue.CreateList(argList.ToArray())));
+
+                    return null;
+
                 }
                 else
                 {
@@ -381,7 +422,7 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
                             else
                             {
                                 // 后面使用默认参数
-                                variableOrValue = null;//s ParseAsValue(argDefine);
+                                variableOrValue = null;//fullName ParseAsValue(argDefine);
                             }
                             dict.Add(argDefine.Variable, variableOrValue);
                         }
@@ -414,6 +455,24 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
 
             return GetRight(p.WithExpression(((InvocationExpressionSyntax)syntax).Expression));
         }
+
+        /// <summary>
+        /// 获取api的名称
+        /// <br/> <see cref="GameApiAttribute"/>
+        /// </summary>
+        /// <param name="method"></param>
+        private bool GetGameApiName(ISymbol symbol, TypeUtility utility, out string? apiName, out int parameterCount, out bool needTarget)
+        {
+            apiName = null; parameterCount = 0; needTarget = false;
+            var att = symbol!.GetAttributes().Where(it => utility.GetFullName(it!.AttributeClass!) == typeof(GameApiAttribute).FullName).FirstOrDefault();
+            if (att == null)
+                return false;
+            apiName = (string)att.ConstructorArguments[0].Value!;
+            parameterCount = (int)att.ConstructorArguments[1].Value!;
+            needTarget = (bool)att.ConstructorArguments[2].Value!;
+            return true;
+        }
+
     }
 
     internal class AssignmentExpressionHandle : ExpressionHandle
@@ -428,8 +487,8 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
             var context = p.Context;
             Debug.Assert(syntax is AssignmentExpressionSyntax);
             AssignmentExpressionSyntax aes = (AssignmentExpressionSyntax)syntax;
-            var right= GetRight(p.WithExpression(aes.Right));
-          return  Assign(p.WithExpression(aes.Left).WithRight(right));
+            var right = GetRight(p.WithExpression(aes.Right));
+            return Assign(p.WithExpression(aes.Left).WithRight(right));
         }
     }
 
@@ -447,12 +506,31 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
 
             var left = GetRight(p.WithExpression(maes.Expression));
             var right = maes.Name.Identifier.Value;
-            Debug.Assert(left.IsVariable, "member access:left value must be variable");
-            if (!CheckGameObjectData(maes.Expression, maes.Name, context, semanticModel))
-                throw new Exception("oop not allowed");
-            LVariableOrValue sensorVar = new LVariableOrValue(method.VariableTable.Add(semanticModel.GetTypeInfo(maes).Type!));
-            p.Block.Emit(new Code_Sensor(sensorVar, left, "@" + (string)right!));
-            return sensorVar;
+            var symbol = p.SemanticMode.GetSymbolInfo(maes.Name).Symbol!;
+            if (symbol.Kind == SymbolKind.Method)
+            {
+                return null;
+                //return new LVariableOrValue(new LVariable);
+            }
+            else
+            {
+                Debug.Assert(left.IsVariable, "member access:obj value must be variable");
+                if (CheckGameObjectData(maes.Expression, maes.Name, context, semanticModel))
+                {
+                    LVariableOrValue sensorVar = new LVariableOrValue(method.VariableTable.Add(semanticModel.GetTypeInfo(maes).Type!));
+                    p.Block.Emit(new Code_Sensor(sensorVar, left, "@" + (string)right!));
+                    return sensorVar;
+
+                }
+                else if (CheckGameConst(p, maes, (string)right!, out var @const))
+                {
+                    return @const!;
+                }
+                else
+                {
+                    throw new Exception($"oop not allowed or Const class not registered in {nameof(MemberAccessExpressionHandle)}.{nameof(CheckGameConst)}");
+                }
+            }
         }
         public override LVariableOrValue DoAssign(Parameter p)
         {
@@ -463,19 +541,32 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
             Debug.Assert(syntax is MemberAccessExpressionSyntax);
             MemberAccessExpressionSyntax maes = (MemberAccessExpressionSyntax)syntax;
 
-            var left = GetRight(p.WithExpression(maes.Expression));
-            var right = maes.Name.Identifier.Value! as string;
-            Debug.Assert(left.IsVariable, "member access:left value must be variable");
-            //TODO check what can be write
-            if (!CheckGameObjectData( maes.Expression, maes.Name, context, semanticModel))
-                throw new Exception("oop not allowed");
+            var obj = GetRight(p.WithExpression(maes.Expression));
+            var memberName = maes.Name.Identifier.Value! as string;
+            Debug.Assert(obj.IsVariable, "member access:left value must be variable");
 
-            if (p.Context.TypeUtility.IsSonOf(,typeof(Building)))
-            {
-                //todo check building control or unit control
-                p.Block.Emit(new Code_Control(left, right));
-            }
-          
+            throw new Exception("oop not allowed");
+
+            //if (!CheckGameObjectData(maes.Expression, maes.Name, context, semanticModel))
+            //    throw new Exception("oop not allowed");
+
+            //// C # setter prevents modification of read-only game data
+            //if (p.Context.TypeUtility.IsSonOf(obj.Variable!.Type, typeof(Building)))
+            //{
+            //    // building control
+            //    p.Block.Emit(new Code_Control(obj, memberName!, p.Right!));
+            //}
+            //else if (p.Context.TypeUtility.IsSonOf(obj.Variable!.Type, typeof(Unit)))
+            //{
+            //    // unit control
+            //    p.Block.Emit(new Code_UnitControl(memberName!, p.Right!));
+
+            //}
+            //else
+            //{
+            //    throw new Exception("oop not allowed");
+            //}
+
 
             return p.Right!;
 
@@ -491,6 +582,24 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
             {
                 return true;
             }
+            return false;
+        }
+
+        private bool CheckGameConst(Parameter p, MemberAccessExpressionSyntax maes, string name, out LVariableOrValue? res)
+        {
+            var fullName = p.Context.TypeUtility.GetFullName(p.SemanticMode.GetTypeInfo(maes).Type!);
+            FieldInfo? field = null;
+            if (fullName == typeof(UnitConst).FullName && (field = typeof(UnitConst).GetField(name)) != null) { }
+            else if (fullName == typeof(ItemConst).FullName && (field = typeof(ItemConst).GetField(name)) != null) { }
+            else if (fullName == typeof(LiquidConst).FullName && (field = typeof(LiquidConst).GetField(name)) != null) { }
+
+            if (field != null)
+            {
+                var gameConst = (GameConst)field!.GetValue(null)!;
+                res = new LVariableOrValue("@" + gameConst.Name);
+                return true;
+            }
+            res = null;
             return false;
         }
 

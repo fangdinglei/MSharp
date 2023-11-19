@@ -24,7 +24,7 @@ namespace MSharp.Core.CodeAnalysis.MindustryCode
     {
         protected HashSet<LVariableOrValue> _variables = new HashSet<LVariableOrValue>();
         public IReadOnlyList<LVariableOrValue> Variables => _variables.ToList();
-        public int Index=-1;
+        public int Index = -1;
 
 
         public BaseCode DeepClone()
@@ -34,14 +34,34 @@ namespace MSharp.Core.CodeAnalysis.MindustryCode
 
         public abstract string ToMindustryCodeString();
 
-        protected string ToString(List<object> list)
+        protected string MultiValueToString(LVariableOrValue Value, int pad = -1)
+        {
+            string str;
+            if (Value.IsVariable)
+            {
+                // var
+                str = Value.VariableOrValueString;
+            }
+            else if (Value.Value is List<object> ls)
+            {
+                // tuple or list
+                str = ToString(ls, pad);
+            }
+            else
+            {
+                // value
+                str = Value.VariableOrValueString.ToString();
+            }
+            return str;
+        }
+        protected string ToString(List<object> list, int pad)
         {
             string res = "";
             foreach (object o in list)
             {
                 Debug.Assert(o is not LVariable, $"tuple or list should contain {nameof(LVariableOrValue)} instead of {nameof(LVariable)}");
                 var obj = o;
-                if (obj is LVariableOrValue v )
+                if (obj is LVariableOrValue v)
                 {
                     if (v.IsVariable)
                     { // var
@@ -55,6 +75,10 @@ namespace MSharp.Core.CodeAnalysis.MindustryCode
                 if (obj is bool b)
                     obj = b ? 1 : 0;
                 res += obj + " ";
+            }
+            for (int i = list.Count; i < pad; i++)
+            {
+                res += 0 + " ";
             }
             return res.TrimEnd();
         }
@@ -255,44 +279,30 @@ namespace MSharp.Core.CodeAnalysis.MindustryCode
             return $"sensor {Result.VariableOrValueString} {Object.VariableOrValueString} {Member}";
         }
     }
-    internal class Code_Control : BaseCode
+    internal class Code_Command : BaseCode
     {
-        public readonly LVariableOrValue Left;
-        public readonly LVariableOrValue Right;
-        public Code_Control(LVariable left, LVariableOrValue right)
-        {
-            Left = new LVariableOrValue(left);
-            Right = right;
-            _variables.Add(Left);
-            _variables.Add(right);
-        }
+        public readonly int ParameterCount;
+        public readonly string Name;
+        public readonly LVariableOrValue Value;
 
+        public Code_Command(string name, int parameterCount, LVariableOrValue value)
+        {
+            ParameterCount = parameterCount;
+            Name = name;
+            Value = value;
+        }
         public override string ToMindustryCodeString()
         {
-            // sample control enabled block1 1 0 0 0
-            // sample control shoot cell1 2 2 3 0
-            string right;
-            if (Right.IsVariable)
-            {
-                // var
-                right = Right.VariableOrValueString;
-            }
-            else if (Right.Value is List<object> ls)
-            {
-                // tuple or list
-                right = ToString(ls);
-            }
-            else
-            {
-                // value
-                right = Right.VariableOrValueString.ToString();
-            }
-            return $"control {Left.Variable!.RealName} {Left.Variable!.Father!.RealName} {right}";
+            string right = MultiValueToString(Value, ParameterCount);
+            return $"{Name} {right}";
         }
+
     }
+
     internal class Code_Jump : BaseCode
     {
-        public enum OpCode {
+        public enum OpCode
+        {
             /// <summary>
             /// =
             /// </summary>
@@ -325,12 +335,12 @@ namespace MSharp.Core.CodeAnalysis.MindustryCode
             strictEqual = 8,
         }
 
-        public  BaseCode? To;
+        public BaseCode? To;
         public readonly OpCode Op;
         public readonly LVariableOrValue? Left;
         public readonly LVariableOrValue? Right;
 
-        public Code_Jump(out Code_Jump me, OpCode op, LVariableOrValue? left=null, LVariableOrValue? right= null)
+        public Code_Jump(out Code_Jump me, OpCode op, LVariableOrValue? left = null, LVariableOrValue? right = null)
         {
             Op = op;
             Left = left;

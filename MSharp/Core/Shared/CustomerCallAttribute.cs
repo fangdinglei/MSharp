@@ -6,11 +6,11 @@ namespace MSharp.Core.Shared
     /// 标记调用的类型
     /// </summary>
     [AttributeUsage(AttributeTargets.Method, Inherited = false)]
-    public class GameCallAttribute : Attribute
+    public class CustomerCallAttribute : Attribute
     {
         public MethodCallMode Mode;
 
-        public GameCallAttribute(MethodCallMode mode)
+        public CustomerCallAttribute(MethodCallMode mode)
         {
             Mode = mode;
         }

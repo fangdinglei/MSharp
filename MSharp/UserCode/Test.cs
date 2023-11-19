@@ -15,10 +15,11 @@ namespace MSharp.UserCode
     {
         B b = new B();
         public Tower tower = new Tower();
+        public Unit t = new Unit();
         public GameObject g = new Tower();
         public void A() { }
 
-        [GameCall(MethodCallMode.UnsafeStacked)]
+        [CustomerCall(MethodCallMode.UnsafeStacked)]
         public override void Main()
         {
             //float a = -1 + (+2.1f);
@@ -32,7 +33,7 @@ namespace MSharp.UserCode
             //    tower.shoot = (1, 2, true);
             //}
             float b = 2;
-            b = ++b;
+            float c = ++b;
             //while (b==3)
             //{
             //    tower.shoot = (1, 2, true);
@@ -48,6 +49,12 @@ namespace MSharp.UserCode
             //    1;
             //A();
             //tower.Write(1, 1);
+            //@unit.Idle();
+            //
+            //@unit.Target(1, 2, true);
+            unit.Boost();
+            self.UnitBind(UnitConst.Mono);
+
         }
     }
 

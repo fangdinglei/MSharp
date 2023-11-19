@@ -165,7 +165,7 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method
             method.Parameters = AnalyzeMethodParameters(context, semanticModel, methodSymbol, method);
 
             // 分析调用类型
-            AnalyzeGameCallAttribute(method, methodSymbol);
+            AnalyzeCustomerCallAttribute(method, methodSymbol);
 
             return method;
         }
@@ -184,14 +184,12 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method
 
         /// <summary>
         /// 分析 方法类型
-        /// <br/> <see cref="GameCallAttribute"/>
+        /// <br/> <see cref="CustomerCallAttribute"/>
         /// </summary>
-        /// <param name="semanticModel"></param>
         /// <param name="method"></param>
-        /// <param name="funcSyntax"></param>
-        private void AnalyzeGameCallAttribute(LMethod method, IMethodSymbol symbol)
+        private void AnalyzeCustomerCallAttribute(LMethod method, IMethodSymbol symbol)
         {
-            var gameCallAttribute = symbol!.GetAttributes().Where(it => GetFullName(it!.AttributeClass) == typeof(GameCallAttribute).FullName).FirstOrDefault();
+            var gameCallAttribute = symbol!.GetAttributes().Where(it => GetFullName(it!.AttributeClass) == typeof(CustomerCallAttribute).FullName).FirstOrDefault();
             if (gameCallAttribute != null)
             {
                 method.CallMode = (MethodCallMode)(int)gameCallAttribute.ConstructorArguments[0].Value;
@@ -200,7 +198,6 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method
             {
                 method.CallMode = MethodCallMode.Default;
             }
-
         }
 
 

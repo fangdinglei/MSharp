@@ -166,17 +166,36 @@ namespace MSharp.Core.Game
         /// 获取这个建筑物/单位的开启状态
         /// </summary>
         [GameObjectData] public bool @enabled { get; set; }
-       
+
         /// <summary>
         /// 获取这个单位的配置(如工厂生产的物品)
         /// </summary>
-        [GameObjectData] public double @config;
+        [GameObjectData] public double @config { get; set; }
+
+        [GameApi("control enabled", 4, true)] public void SetEnabled(double enabled) { }
+        [GameApi("control enabled", 4, true)] public void SetEnabled(bool enabled) { }
+
+        [GameApi("control shoot", 4, true)] public void Shoot(double x, double y, double shoot) { }
+        [GameApi("control shoot", 4, true)] public void Shoot(double x, double y, bool shoot) { }
+
+        [GameApi("control shootp", 4, true)] public void ShootP(object target, double shoot) { }
+        [GameApi("control shootp", 4, true)] public void ShootP(object target, bool shoot) { }
+
+        [GameApi("control config", 4, true)] public void Config(object unknown) { }
     }
     [GameIgnore]
     public class Lamp : Building
     {
-        [GameObjectData] public double color { set; get; }
+        /// <summary>
+        /// TODO
+        /// </summary>
+        /// <param name="color"></param>
+        //[Obsolete]
+        //[GameApi("color")] public void Color(ColorData color) { }
     }
+    public class Message : Building { }
+    public class Display : Building { }
+
     [GameIgnore]
     public class Tower : Building
     {
@@ -216,90 +235,90 @@ namespace MSharp.Core.Game
         /// <summary>
         /// 原地不动，但继续采矿/建造
         /// </summary>
-        public void Idea() { }
+        [GameApi("ucontrol idle", 5, false)] public void Idle() { }
         /// <summary>
         /// 停止移动/建造/采矿
         /// </summary>
-        public void Stop() { }
+        [GameApi("ucontrol stop", 5, false)] public void Stop() { }
         /// <summary>
         /// 移动到
         /// </summary>
         /// <param name="x"></param>
         /// <param name="y"></param>
-        public void Move(double x, double y) { }
+        [GameApi("ucontrol move", 5, false)] public void Move(double x, double y) { }
         /// <summary>
         /// 靠近
         /// </summary>
         /// <param name="x"></param>
         /// <param name="y"></param>
         /// <param name="radius"></param>
-        public void Approach(double x, double y, double radius) { }
+        [GameApi("ucontrol approach", 5, false)] public void Approach(double x, double y, double radius) { }
         /// <summary>
         /// TODO
         /// </summary>
         /// <param name="x"></param>
         /// <param name="y"></param>
         /// <exception cref="NotImplementedException"></exception>
-        public void PathFind(double x, double y) { throw new NotImplementedException(); }
+        [GameApi("ucontrol pathfind", 5, false)] public void PathFind(double x, double y) { throw new NotImplementedException(); }
         /// <summary>
         /// TODO
         /// </summary>
-        public void AutoPathFind() { }
+        [GameApi("ucontrol autoPathfind", 5, false)] public void AutoPathFind() { }
         /// <summary>
         /// 开始/结束 起飞
         /// </summary>
-        public void Boost() { }
+        [GameApi("ucontrol boost", 5, false)] public void Boost() { }
         /// <summary>
         /// 瞄准或开火
         /// </summary>
         /// <param name="x"></param>
         /// <param name="y"></param>
         /// <param name="shoot">开火</param>
-        public void Target(double x, double y, bool shoot) { }
+        [GameApi("ucontrol target", 5, false)] public void Target(double x, double y, bool shoot) { }
         /// <summary>
         /// 瞄准或开火（预判速度）
         /// </summary>
         /// <param name="unit"></param>
         /// <param name="shoot">开火</param>
-        public void Targetp(Unit unit, bool shoot) { }
+        [GameApi("ucontrol targetp", 5, false)] public void Targetp(Unit unit, bool shoot) { }
         /// <summary>
         /// 放下物资
         /// </summary>
         /// <param name="to"></param>
         /// <param name="mount"></param>
-        public void ItemDrop(Building to, double mount) { }
+        [GameApi("ucontrol itemdrop", 5, false)] public void ItemDrop(Building to, double mount) { }
         /// <summary>
         /// 拿起物资
         /// </summary>
         /// <param name="from"></param>
         /// <param name="item"></param>
         /// <param name="amount"></param>
-        public void ItemTake(Building from, string item, double amount) { }
+        [GameApi("ucontrol itemTake", 5, false)] public void ItemTake(Building from, string item, double amount) { }
         /// <summary>
         /// 放下载荷
         /// </summary>
         /// <param name="unit"></param>
-        public void PayDrop(Unit unit) { }
+        [GameApi("ucontrol itemDrop", 5, false)] public void PayDrop(Unit unit) { }
         /// <summary>
         /// 拿起载荷
         /// </summary>
         /// <param name="unit"></param>
-        public void PayTake(Unit unit) { }
+        [GameApi("ucontrol payTake", 5, false)] public void PayTake(Unit unit) { }
         /// <summary>
         /// 进入或降落到单位下方的载荷方块中
         /// </summary>
-        public void PayEnter() { }
+        [GameApi("ucontrol payEnter", 5, false)] public void PayEnter() { }
         /// <summary>
         /// 采矿
         /// </summary>
         /// <param name="x"></param>
         /// <param name="y"></param>
-        public void Mine(double x, double y) { }
+        [GameApi("ucontrol mine", 5, false)] public void Mine(double x, double y) { }
         /// <summary>
         /// 标记
         /// </summary>
         /// <param name="value"></param>
-        public void Flag(double value) { }
+        [GameApi("ucontrol flag", 5, false)] public void Flag(double value) { }
         /// <summary>
         /// 建造
         /// </summary>
@@ -308,7 +327,7 @@ namespace MSharp.Core.Game
         /// <param name="y"></param>
         /// <param name="rotation"></param>
         /// <param name="config"></param>
-        public void Build(double block, double x, double y, double rotation, double config) { }
+        [GameApi("ucontrol build", 5, false)] public void Build(double block, double x, double y, double rotation, double config) { }
         /// <summary>
         /// 获取区块
         /// </summary>
@@ -317,7 +336,7 @@ namespace MSharp.Core.Game
         /// <param name="type">类型常量</param>
         /// <param name="building">建筑</param>
         /// <param name="floor">地面 矿或水等</param>
-        public void GetBlock(double x, double y, out double type, out double building, out double floor) { throw new Exception(); }
+        [GameApi("ucontrol getBlock", 5, false)] public void GetBlock(double x, double y, out double type, out double building, out double floor) { throw new Exception(); }
         /// <summary>
         /// 是否靠近
         /// </summary>
@@ -325,11 +344,11 @@ namespace MSharp.Core.Game
         /// <param name="y"></param>
         /// <param name="radius"></param>
         /// <param name="result"></param>
-        public void Within(double x, double y, double radius, out bool result) { throw new Exception(); }
+        [GameApi("ucontrol within", 5, false)] public void Within(double x, double y, double radius, out bool result) { throw new Exception(); }
         /// <summary>
         /// 解除绑定
         /// </summary>
-        public void Bind() { }
+        [GameApi("ucontrol unbind", 5, false)] public void UnBind() { }
     }
     [GameIgnore]
     public class Memory : GameObject
@@ -383,22 +402,82 @@ namespace MSharp.Core.Game
         /// </summary>
         public double @ipt;
 
+        /// <summary>
+        /// TODO
+        /// </summary>
+        /// <param name="color"></param>
+        [Obsolete]
+        public ColorData PackColor(double r, double g, double b, double a) { return null!; }
 
-
-        static public void UnitBind(string type) { }
+        [GameApi("ubind", -1, false)] public void UnitBind(UnitConst type) { }
         /// <summary>
         /// 处理器等待
         /// </summary>
         /// <param name="sec"></param>
-        static public void Wait(double sec) { }
+        [GameApi("wait", -1, false)] public void Wait(double sec) { }
         /// <summary>
         /// 回到第一条
         /// </summary>
-        static public void End() { }
+        [GameApi("end", -1, false)] public void End() { }
         /// <summary>
         /// 停止（没有发现和End区别）
         /// </summary>
-        static public void Stop() { }
+        [GameApi("stop", -1, false)] public void Stop() { }
+
+        // todo change to theirs class
+        [GameApi("drawflush", -1, false)] public void DrawFlush(Display display) { }
+        [GameApi("printflush", -1, false)] public void PrintFlush(Message message) { }
+
+
+        [GameApi("draw clear", 6)] public void DrawClear(double r, double g, double b) { }
+        [GameApi("draw color", 6)] public void DrawColor(double r, double g, double b, double a) { }
+        [GameApi("draw col", 6)] public void DrawClear(ColorData color) { }
+        [GameApi("draw stroke", 6)] public void DrawStroke(double width) { }
+        [GameApi("draw line", 6)] public void DrawLine(double x, double y, double x2, double y2) { }
+        [GameApi("draw rect", 6)] public void DrawRect(double x, double y, double width, double height) { }
+        [GameApi("draw lineRect", 6)] public void DrawLineRect(double x, double y, double width, double height) { }
+        [GameApi("draw poly", 6)] public void DrawPoly(double x, double y, double sides, double radius, double rotation) { }
+        [GameApi("draw linePoly", 6)] public void DrawLinePoly(double x, double y, double sides, double radius, double rotation) { }
+        [GameApi("draw triangle", 6)] public void DrawTriangle(double x, double y, double x2, double y2, double x3, double y3) { }
+        [GameApi("draw image", 6)] public void DrawImage(double x, double y, GameConst image, double size, double rotation) { }
     }
+
+    public class GameConst
+    {
+        public readonly string Name;
+
+        public GameConst(string name)
+        {
+            Name = name;
+        }
+    }
+    public class UnitConst : GameConst
+    {
+        static public UnitConst Mono = new("mono");
+
+        public UnitConst(string v) : base(v) { }
+    }
+
+    public class ItemConst : GameConst
+    {
+
+
+        public ItemConst(string v) : base(v) { }
+    }
+
+    public class LiquidConst : GameConst
+    {
+        static public GameConst Water = new GameConst("water");
+
+
+        public LiquidConst(string v) : base(v) { }
+    }
+
+
+    public class ColorData
+    {
+
+    }
+
 }
 #pragma warning restore IDE1006, CS8618 // 命名样式

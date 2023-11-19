@@ -7,7 +7,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Xml.Linq;
 
 namespace MSharp.Core.CodeAnalysis.Compile.Method.StatementHandles
 {
@@ -86,7 +85,8 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.StatementHandles
 
         public abstract void Handle(StatementHandleParameters parameters);
 
-        protected StatementSyntax[] GetStatements(StatementSyntax ss) {
+        protected StatementSyntax[] GetStatements(StatementSyntax ss)
+        {
             StatementSyntax[] statements;
             if (ss is BlockSyntax bs)
             {
@@ -123,7 +123,9 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.StatementHandles
                 var var2 = p.Block.Method.VariableTable.Add(typeInfo.Type!, symbol!, variable.Identifier.ToString());
                 if (variable.Initializer != null)
                 {
-                    ExpressionHandle.Assign(var2, variable.Initializer!.Value, p.Context, p.SemanticModel, p.Block, p.Block.Method);
+                    var p2 = new ExpressionHandle.Parameter(variable.Initializer!.Value, p.Context, p.SemanticModel, p.Block, p.Block.Method);
+                    var initVal = ExpressionHandle.GetRight(p2);
+                    ExpressionHandle.Assign(var2, initVal, p.Block);
                 }
             }
         }
@@ -222,7 +224,7 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.StatementHandles
             foreach (var item in statements)
                 p.Context.StatementManager.Handle(item, p.Context, p.SemanticModel, whileBlock);
 
-            if (whileBlock.Codes.Count>0)
+            if (whileBlock.Codes.Count > 0)
             {
                 // jump out of while
                 p.Block.Emit(new Code_Jump(out var jumpOut, Code_Jump.OpCode.notEqual, condition, new LVariableOrValue(1)));
@@ -261,12 +263,12 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.StatementHandles
                 p.Context.StatementManager.Handle(item, p.Context, p.SemanticModel, forBlock);
 
             // TODO fss.Declaration;
-           // fss.Declaration.
+            // fss.Declaration.
 
 
             var conditionCodeStart = p.Block.Codes.Count;
-            Code_Jump? jumpOut=null;
-            if (fss.Condition!=null)
+            Code_Jump? jumpOut = null;
+            if (fss.Condition != null)
             {
                 var condition = ExpressionHandle.GetRight(new(fss.Condition, p.Context, p.SemanticModel, p.Block, p.Block.Method));
                 p.Block.MergePostCodes();
@@ -276,8 +278,8 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.StatementHandles
                 }
             }
             //TODO
-            var i= fss.Incrementors[0];
-         
+            var i = fss.Incrementors[0];
+
 
             if (forBlock.Codes.Count > 0)
             {
@@ -289,7 +291,7 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.StatementHandles
                 var incrementorsCodeStart = p.Block.Codes.Count;
                 foreach (var inc in fss.Incrementors)
                 {
-                    ExpressionHandle.GetRight(new ExpressionHandle.Parameter(inc ,p.Context,p.SemanticModel,p.Block,p.Block.Method));
+                    ExpressionHandle.GetRight(new ExpressionHandle.Parameter(inc, p.Context, p.SemanticModel, p.Block, p.Block.Method));
                     p.Block.MergePostCodes();
                     // todo post++
                 }
@@ -301,7 +303,8 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.StatementHandles
                     forBlock.ContinueCall(node);
                     forBlock.NextCall(node);
                 }
-                else {
+                else
+                {
                     // not empty Incrementors
                     var node = p.Block.Codes[incrementorsCodeStart];
                     forBlock.ContinueCall(node);
@@ -310,7 +313,7 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.StatementHandles
 
                 p.Block.ReturnCall += (node) => forBlock.ReturnCall(node);
             }
-            if (jumpOut!=null)
+            if (jumpOut != null)
                 p.Block.NextCall += (node) => jumpOut.To = node;
 
         }

@@ -48,7 +48,6 @@ namespace MSharp.Core.CodeAnalysis
         {
             Temp,
             LocalVar,
-            MemberVisit,
             Field,
         }
 
@@ -57,25 +56,10 @@ namespace MSharp.Core.CodeAnalysis
         public string? Name;
         public ITypeSymbol? Type;
         public ISymbol? Symbol;
-        /// <summary>
-        /// 对象访问的左值
-        /// </summary>
-        public LVariable? Father;
 
         public readonly VariableType Kind;
 
         public string RealName => (Index.HasValue ? "var" + Index : Name)!;
-
-        /// <summary>
-        /// member of obj
-        /// </summary>
-        /// <param name="father"></param>
-        /// <param name="name"></param>
-        public LVariable(LVariable father,string name) {
-            Kind = VariableType.MemberVisit;
-              Father = father;
-            Name = name;
-        }
 
         public LVariable(string name)
         {
@@ -100,14 +84,13 @@ namespace MSharp.Core.CodeAnalysis
             Type = type;
         }
 
-        public LVariable(LMethod method, string name, int index, ITypeSymbol? type, ISymbol? symbol, VariableType kind, LVariable? father = null)
+        public LVariable(LMethod method, string name, int index, ITypeSymbol? type, ISymbol? symbol, VariableType kind)
         {
             Method = method;
             Index = index;
             Name = name;
             Type = type;
             Symbol = symbol;
-            Father = father;
             Kind = kind;
         }
 
@@ -126,7 +109,16 @@ namespace MSharp.Core.CodeAnalysis
 
         public bool IsVariable => Variable != null;
 
-        public string VariableOrValueString => Variable != null ? Variable.RealName : Value is bool b?(b? "1" : "0"): Value!.ToString()!;
+        public string VariableOrValueString => Variable != null ? Variable.RealName : Value is bool b ? (b ? "1" : "0") : Value?.ToString() ?? "0";
+
+        static public LVariableOrValue ONE = new LVariableOrValue(1);
+        static public LVariableOrValue VOID = new LVariableOrValue(null);
+        static public LVariableOrValue CreateList(params LVariableOrValue[] values)
+        {
+            var vs = new List<object>();
+            vs.AddRange(values);
+            return new LVariableOrValue(vs);
+        }
 
         public LVariableOrValue(object? value)
         {
@@ -219,11 +211,11 @@ namespace MSharp.Core.CodeAnalysis
         /// <summary>
         /// 代码
         /// </summary>
-        public  List<BaseCode> Codes = new List<BaseCode>();
+        public List<BaseCode> Codes = new List<BaseCode>();
 
-        public  Action<BaseCode> ReturnCall = (a) => { };
+        public Action<BaseCode> ReturnCall = (a) => { };
 
-        public  Action<BaseCode> ContinueCall = (a) => { };
+        public Action<BaseCode> ContinueCall = (a) => { };
 
         public Action<BaseCode> NextCall = (a) => { };
 
@@ -234,7 +226,8 @@ namespace MSharp.Core.CodeAnalysis
             Method = method;
         }
 
-        public void MergePostCodes() {
+        public void MergePostCodes()
+        {
             Emit(PostCodes);
             PostCodes.Clear();
         }
@@ -309,7 +302,7 @@ namespace MSharp.Core.CodeAnalysis
         public LVariable Add(LVariable variable)
         {
             // 重命名
-            if (variable.Kind!= LVariable.VariableType.Temp )
+            if (variable.Kind != LVariable.VariableType.Temp)
             {
                 Debug.Assert(variable.Name != null);
                 // 如果没有，直接使用原名
@@ -321,7 +314,7 @@ namespace MSharp.Core.CodeAnalysis
                 // 使用自动生成的名称
                 while (true)
                 {
-                    var v = new LVariable(_method, variable.Name, ++ptr, variable.Type, variable.Symbol,variable.Kind,variable.Father);
+                    var v = new LVariable(_method, variable.Name, ++ptr, variable.Type, variable.Symbol, variable.Kind);
                     if (defines.ContainsKey(v.RealName))
                         continue;
                     defines.Add(v.RealName, v);
@@ -336,7 +329,7 @@ namespace MSharp.Core.CodeAnalysis
                     var v = new LVariable(_method, ++ptr, variable.Type);
                     if (defines.ContainsKey(v.RealName))
                         continue;
-                    defines.Add(v.RealName, v); 
+                    defines.Add(v.RealName, v);
                     SymbolDict.Add(v.Symbol!, v);
                     return v;
                 }
@@ -349,10 +342,10 @@ namespace MSharp.Core.CodeAnalysis
             //TODO
             return SymbolDict[symbol];
         }
-        public bool TryGet(ISymbol symbol,out LVariable? variable)
+        public bool TryGet(ISymbol symbol, out LVariable? variable)
         {
             //TODO
-            return SymbolDict.TryGetValue(symbol,out variable);
+            return SymbolDict.TryGetValue(symbol, out variable);
         }
         public ICollection<LVariable> GetAll()
         {

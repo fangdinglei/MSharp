@@ -13,7 +13,6 @@ namespace MSharp.Core.CodeAnalysis.Compile
 
 
         internal readonly MethodAnalyzer MethodAnalyzer = new();
-        internal readonly MethodBodyAnalyzer MethodBodyAnalyzer = new();
         internal readonly StatementManager StatementManager = new();
 
         internal readonly Dictionary<INamedTypeSymbol, LClass> Classes = new(SymbolEqualityComparer.Default);

@@ -120,7 +120,7 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.StatementHandles
             foreach (var variable in localDeclaration.Declaration.Variables)
             {
                 var symbol = p.SemanticModel.GetDeclaredSymbol(variable);
-                var var2 = p.Block.Method.VariableTable.Add(typeInfo.Type!, symbol!, variable.Identifier.ToString());
+                var var2 = p.Block.Method.VariableTable.AddLocalVariable(typeInfo.Type!, symbol!, variable.Identifier.ToString());
                 if (variable.Initializer != null)
                 {
                     var p2 = new ExpressionHandle.Parameter(variable.Initializer!.Value, p.Context, p.SemanticModel, p.Block, p.Block.Method);
@@ -256,15 +256,21 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.StatementHandles
         {
             ForStatementSyntax fss = (ForStatementSyntax)p.Syntax;
 
-            var forBlock = new LBlock(p.Block.Method);
-            StatementSyntax[] statements = GetStatements(fss.Statement);
-
-            foreach (var item in statements)
-                p.Context.StatementManager.Handle(item, p.Context, p.SemanticModel, forBlock);
-
-            // TODO fss.Declaration;
-            // fss.Declaration.
-
+            if (fss.Declaration != null)
+            {
+                var type = p.SemanticModel.GetTypeInfo(fss.Declaration.Type).Type!;
+                foreach (var item in fss.Declaration.Variables)
+                {
+                    var symbol = p.SemanticModel.GetDeclaredSymbol(item)!;
+                    var var2 = p.Block.Method.VariableTable.AddLocalVariable(type, symbol, (string)item.Identifier.Value!);
+                    if (item.Initializer != null)
+                    {
+                        var p2 = new ExpressionHandle.Parameter(item.Initializer!.Value, p.Context, p.SemanticModel, p.Block, p.Block.Method);
+                        var initVal = ExpressionHandle.GetRight(p2);
+                        ExpressionHandle.Assign(var2, initVal, p.Block);
+                    }
+                }
+            }
 
             var conditionCodeStart = p.Block.Codes.Count;
             Code_Jump? jumpOut = null;
@@ -272,14 +278,14 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.StatementHandles
             {
                 var condition = ExpressionHandle.GetRight(new(fss.Condition, p.Context, p.SemanticModel, p.Block, p.Block.Method));
                 p.Block.MergePostCodes();
-                if (forBlock.Codes.Count > 0 || fss.Incrementors.Count > 0)
-                {
-                    p.Block.Emit(new Code_Jump(out jumpOut, Code_Jump.OpCode.notEqual, condition, new LVariableOrValue(1)));
-                }
+                p.Block.Emit(new Code_Jump(out jumpOut, Code_Jump.OpCode.notEqual, condition, LVariableOrValue.ONE));
             }
-            //TODO
-            var i = fss.Incrementors[0];
 
+            var forBlock = new LBlock(p.Block.Method);
+            StatementSyntax[] statements = GetStatements(fss.Statement);
+
+            foreach (var item in statements)
+                p.Context.StatementManager.Handle(item, p.Context, p.SemanticModel, forBlock);
 
             if (forBlock.Codes.Count > 0)
             {

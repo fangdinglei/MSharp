@@ -55,7 +55,7 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method
             {
                 if (member is IFieldSymbol field)
                 {// 字段
-                    lClass.Connects.Add(field.Name);
+                    lClass.VariableTable.Add(field, field.Type, field.Name);
                 }
                 else if (member is IMethodSymbol method)
                 {// 方法
@@ -135,7 +135,13 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method
                     methodSymbol.DeclaringSyntaxReferences[0].GetSyntax();
                 var statements = methodSyntax!.Body!.Statements;
                 var semanticModel = context.SemanticModels[methodSyntax.SyntaxTree];
-                context.MethodBodyAnalyzer.Analyze(context, method, semanticModel, statements.ToList());
+
+                var block = new LBlock(method);
+                method.Block = block;
+                foreach (var statement in statements.ToList())
+                {
+                    context.StatementManager.Handle(statement, context, semanticModel, block);
+                }
             }
             finally
             {
@@ -175,7 +181,7 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method
             List<LParameter> res = new List<LParameter>();
             foreach (var parameterSymbol in methodSymbol.Parameters)
             {
-                var v = method.VariableTable.Add(parameterSymbol.Type, parameterSymbol, parameterSymbol.Name);
+                var v = method.VariableTable.AddLocalVariable(parameterSymbol.Type, parameterSymbol, parameterSymbol.Name);
                 LParameter parameter = new LParameter(v, parameterSymbol.HasExplicitDefaultValue ? parameterSymbol.ExplicitDefaultValue : null);
                 res.Add(parameter);
             }
@@ -199,30 +205,6 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method
                 method.CallMode = MethodCallMode.Default;
             }
         }
-
-
-
-        // 已经在分析方法体时分析
-        ///// <summary>
-        ///// 分析方法中所有本地变量
-        ///// </summary>
-        ///// <param name="semanticModel"></param>
-        ///// <param name="methods"></param>
-        ///// <param name="funcSyntax"></param>
-        //private void AnalyzeVariables(SemanticModel semanticModel, Method methods, MethodDeclarationSyntax funcSyntax)
-        //{
-        //    var localVariables = funcSyntax.DescendantNodes().OfType<LocalDeclarationStatementSyntax>();
-        //    foreach (var localVariable in localVariables)
-        //    {
-        //        var type = localVariable.Declaration.Type;
-        //        var typeInfo = semanticModel.GetTypeInfo(type);
-        //        foreach (var variable in localVariable.Declaration.Variables)
-        //        {
-        //            //var a = semanticModel.GetTypeInfo(funcSyntax.DescendantNodes().OfType<IdentifierNameSyntax>().ToList()[0]);
-        //            methods.VariableTable.Add(typeInfo, variable.Identifier.ToString());
-        //        }
-        //    }
-        //}
 
     }
 }

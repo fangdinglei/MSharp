@@ -34,55 +34,6 @@ namespace MSharp.Core.CodeAnalysis.MindustryCode
 
         public abstract string ToMindustryCodeString();
 
-        protected string MultiValueToString(LVariableOrValue Value, int pad = -1)
-        {
-            string str;
-            if (Value.IsVariable)
-            {
-                // var
-                str = Value.VariableOrValueString;
-            }
-            else if (Value.Value is List<object> ls)
-            {
-                // tuple or list
-                str = ToString(ls, pad);
-            }
-            else
-            {
-                // value
-                str = Value.VariableOrValueString.ToString();
-            }
-            return str;
-        }
-        protected string ToString(List<object> list, int pad)
-        {
-            string res = "";
-            foreach (object o in list)
-            {
-                Debug.Assert(o is not LVariable, $"tuple or list should contain {nameof(LVariableOrValue)} instead of {nameof(LVariable)}");
-                var obj = o;
-                if (obj is LVariableOrValue v)
-                {
-                    if (v.IsVariable)
-                    { // var
-                        res += v.VariableOrValueString + " ";
-                        continue;
-                    }
-                    // value
-                    obj = v.Value!;
-                }
-                // value
-                if (obj is bool b)
-                    obj = b ? 1 : 0;
-                res += obj + " ";
-            }
-            for (int i = list.Count; i < pad; i++)
-            {
-                res += 0 + " ";
-            }
-            return res.TrimEnd();
-        }
-
     }
     /// <summary>
     /// 命名与像素工厂代码命名一致 方便转换 特别的相反的两个逻辑判断(<![CDATA[< <= > >= = !=]]>)枚举的值 xor后结果为1
@@ -105,7 +56,7 @@ namespace MSharp.Core.CodeAnalysis.MindustryCode
         /// <summary>
         /// 除法
         /// </summary>
-        dic = 4,
+        div = 4,
         /// <summary>
         /// 整除 like (int)(op1/op2)
         /// </summary>
@@ -148,19 +99,15 @@ namespace MSharp.Core.CodeAnalysis.MindustryCode
         /// <![CDATA[<]]>
         /// </summary>
         lessThan = 15,
-        LT = 16,
+        LT = 15,
 
-        /// <summary>
-        /// like js ===
-        /// <br/> 0 EQUAL null=>true   0 strictEqual null=>false
-        /// </summary>
-        strictEqual = 15,
+
         /// <summary>
         /// 左移
         /// </summary>
         shl = 16,
         /// <summary>
-        /// 
+        /// 右移
         /// </summary>
         shr = 17,
 
@@ -216,6 +163,11 @@ namespace MSharp.Core.CodeAnalysis.MindustryCode
         /// </summary>
         rand = 36,
 
+        /// <summary>
+        /// like js ===
+        /// <br/> 0 EQUAL null=>true   0 strictEqual null=>false
+        /// </summary>
+        strictEqual = 100,
     }
     internal class Code_Operation : BaseCode
     {
@@ -281,22 +233,18 @@ namespace MSharp.Core.CodeAnalysis.MindustryCode
     }
     internal class Code_Command : BaseCode
     {
-        public readonly int ParameterCount;
         public readonly string Name;
         public readonly LVariableOrValue Value;
 
-        public Code_Command(string name, int parameterCount, LVariableOrValue value)
+        public Code_Command(string name, LVariableOrValue value)
         {
-            ParameterCount = parameterCount;
             Name = name;
             Value = value;
         }
         public override string ToMindustryCodeString()
         {
-            string right = MultiValueToString(Value, ParameterCount);
-            return $"{Name} {right}";
+            return $"{Name} {Value.VariableOrValueString}";
         }
-
     }
 
     internal class Code_Jump : BaseCode

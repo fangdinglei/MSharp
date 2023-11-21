@@ -10,31 +10,36 @@ using System.Text;
 
 namespace MSharp.Core.CodeAnalysis
 {
-
     internal class LClass
     {
-        public readonly CompileContext Context;
+        private Dictionary<IMethodSymbol, LMethod> _functions = new(SymbolEqualityComparer.Default);
 
+        public readonly CompileContext Context;
+        /// <summary>
+        /// 类的定义，暂时没用，先记着
+        /// </summary>
         public readonly INamedTypeSymbol Symbol;
         /// <summary>
-        /// 连接到处理器的建筑名称集合(通过代码推断出的)
+        /// 字段表（不管是属性还是字段都记这）
         /// </summary>
-        public readonly List<string> Connects = new List<string>();
+        public readonly FieldTable VariableTable;
+
         /// <summary>
         /// 类中的函数
         /// </summary>
-        public readonly Dictionary<IMethodSymbol, LMethod> Functions = new(SymbolEqualityComparer.Default);
+        public IReadOnlyDictionary<IMethodSymbol, LMethod> Functions => _functions;
 
         public LClass(CompileContext compileContext, INamedTypeSymbol symbol)
         {
             Context = compileContext;
             Symbol = symbol;
+            VariableTable = new FieldTable(this);
         }
 
         public LMethod CreateMethod(IMethodSymbol symbol)
         {
             var res = new LMethod(this, symbol);
-            Functions.Add(symbol, res);
+            _functions.Add(symbol, res);
             Context.AddMethod(symbol, res);
             return res;
         }
@@ -44,6 +49,9 @@ namespace MSharp.Core.CodeAnalysis
     /// </summary>
     internal class LVariable
     {
+        public const string TEMP_PREFIX = "_t_var_";
+
+
         public enum VariableType
         {
             Temp,
@@ -51,6 +59,7 @@ namespace MSharp.Core.CodeAnalysis
             Field,
         }
 
+        public LClass? Class;
         public LMethod? Method;
         public int? Index;
         public string? Name;
@@ -59,16 +68,21 @@ namespace MSharp.Core.CodeAnalysis
 
         public readonly VariableType Kind;
 
-        public string RealName => (Index.HasValue ? "var" + Index : Name)!;
+        public string RealName => (Index.HasValue ? TEMP_PREFIX + Index : Name)!;
 
-        public LVariable(string name)
+        public LVariable(LClass clazz, ITypeSymbol type, ISymbol symbol, string name)
         {
+            Debug.Assert(clazz != null && name != null && !name.StartsWith(TEMP_PREFIX));
+            Class = clazz;
             Kind = VariableType.Field;
             Name = name;
+            Type = type;
+            Symbol = symbol;
         }
 
         public LVariable(LMethod method, string name, ITypeSymbol type, ISymbol symbol)
         {
+            Debug.Assert(method != null && name != null && !name.StartsWith(TEMP_PREFIX));
             Kind = VariableType.LocalVar;
             Method = method;
             Name = name;
@@ -86,6 +100,7 @@ namespace MSharp.Core.CodeAnalysis
 
         public LVariable(LMethod method, string name, int index, ITypeSymbol? type, ISymbol? symbol, VariableType kind)
         {
+            Debug.Assert(method != null && name != null && !name.StartsWith(TEMP_PREFIX));
             Method = method;
             Index = index;
             Name = name;
@@ -93,7 +108,6 @@ namespace MSharp.Core.CodeAnalysis
             Symbol = symbol;
             Kind = kind;
         }
-
 
 
         public override string ToString()
@@ -107,30 +121,54 @@ namespace MSharp.Core.CodeAnalysis
 
         public object? Value;
 
+        List<LVariableOrValue>? ValueList;
+
         public bool IsVariable => Variable != null;
 
-        public string VariableOrValueString => Variable != null ? Variable.RealName : Value is bool b ? (b ? "1" : "0") : Value?.ToString() ?? "0";
+        public bool IsList => ValueList != null;
 
+        public string VariableOrValueString => IsVariable ? Variable!.RealName
+            : IsList ? MultiValueToString()
+            : ConvertToInt(Value).ToString()!;
+
+        static public LVariableOrValue ZERO = new LVariableOrValue(0);
         static public LVariableOrValue ONE = new LVariableOrValue(1);
-        static public LVariableOrValue VOID = new LVariableOrValue(null);
-        static public LVariableOrValue CreateList(params LVariableOrValue[] values)
-        {
-            var vs = new List<object>();
-            vs.AddRange(values);
-            return new LVariableOrValue(vs);
-        }
+        static public LVariableOrValue VOID = new LVariableOrValue((object?)null);
 
         public LVariableOrValue(object? value)
         {
             Debug.Assert(value is not LVariable);
             Debug.Assert(value is not LVariableOrValue);
+            Debug.Assert(value is not List<LVariableOrValue>);
             Value = value;
         }
-        public LVariableOrValue(LVariable? variable)
+        public LVariableOrValue(LVariable variable)
         {
             Variable = variable;
         }
+        public LVariableOrValue(List<LVariableOrValue> variables, int pad)
+        {
+            ValueList = variables;
+            while (variables.Count < pad)
+                variables.Add(ZERO);
+        }
 
+        protected string MultiValueToString()
+        {
+
+            string res = "";
+            foreach (LVariableOrValue obj in ValueList!)
+                res += obj.VariableOrValueString + " ";
+            return res.TrimEnd();
+        }
+        protected object ConvertToInt(object? obj)
+        {
+            if (obj is bool b)
+                return b ? 1 : 0;
+            if (obj == null)
+                return 0;
+            return obj;
+        }
         public override string ToString()
         {
             return VariableOrValueString;
@@ -181,7 +219,7 @@ namespace MSharp.Core.CodeAnalysis
             // To prevent conflicts, reset the variable name 要将所有变量重写，防止冲突
             foreach (LVariable variable in method.VariableTable.GetAll())
             {
-                var newVariable = VariableTable.Add(variable);
+                var newVariable = VariableTable.ReNameVariable(variable);
                 newVariablesDict.Add(variable, newVariable);
             }
 
@@ -219,6 +257,9 @@ namespace MSharp.Core.CodeAnalysis
 
         public Action<BaseCode> NextCall = (a) => { };
 
+        /// <summary>
+        /// 主要是 i++这样的
+        /// </summary>
         public List<BaseCode> PostCodes = new List<BaseCode>();
 
         public LBlock(LMethod method)
@@ -226,6 +267,9 @@ namespace MSharp.Core.CodeAnalysis
             Method = method;
         }
 
+        /// <summary>
+        /// 主要是 i++这样的
+        /// </summary>
         public void MergePostCodes()
         {
             Emit(PostCodes);
@@ -274,20 +318,27 @@ namespace MSharp.Core.CodeAnalysis
             _method = method;
         }
 
-        public LVariable Add(ITypeSymbol type, ISymbol symbol, string name)
+        public LVariable AddLocalVariable(ITypeSymbol type, ISymbol symbol, string name)
         {
+            string suffix = "";
+            int ptr = 0;
             while (true)
             {
-                var v = new LVariable(_method, name, type, symbol);
-                if (defines.ContainsKey(v.RealName))
+                // process same name
+                if (defines.ContainsKey(name + suffix))
+                {
+                    ptr++;
+                    suffix = "_" + ptr;
                     continue;
+                }
+                var v = new LVariable(_method, name + suffix, type, symbol);
                 defines.Add(v.RealName, v);
                 SymbolDict.Add(symbol, v);
                 return v;
             }
         }
 
-        public LVariable Add(ITypeSymbol type)
+        public LVariable AddTempVariable(ITypeSymbol type)
         {
             while (true)
             {
@@ -299,7 +350,7 @@ namespace MSharp.Core.CodeAnalysis
             }
         }
 
-        public LVariable Add(LVariable variable)
+        public LVariable ReNameVariable(LVariable variable)
         {
             // 重命名
             if (variable.Kind != LVariable.VariableType.Temp)
@@ -323,10 +374,10 @@ namespace MSharp.Core.CodeAnalysis
             }
             else
             {
-                // 生成临时变量
+                // 使用自动生成的名称
                 while (true)
                 {
-                    var v = new LVariable(_method, ++ptr, variable.Type);
+                    var v = new LVariable(_method, ++ptr, variable.Type!);
                     if (defines.ContainsKey(v.RealName))
                         continue;
                     defines.Add(v.RealName, v);
@@ -339,17 +390,41 @@ namespace MSharp.Core.CodeAnalysis
 
         public LVariable Get(ISymbol symbol)
         {
-            //TODO
-            return SymbolDict[symbol];
+            if (TryGet(symbol, out var v))
+                return v!;
+            throw new Exception("variable not defined");
         }
         public bool TryGet(ISymbol symbol, out LVariable? variable)
         {
-            //TODO
             return SymbolDict.TryGetValue(symbol, out variable);
         }
         public ICollection<LVariable> GetAll()
         {
             return defines.Values;
+        }
+
+    }
+    internal class FieldTable
+    {
+        Dictionary<string, LVariable> defines = new();
+        Dictionary<ISymbol, LVariable> SymbolDict = new(SymbolEqualityComparer.Default);
+        LClass _class;
+
+        public FieldTable(LClass @class)
+        {
+            _class = @class;
+        }
+
+        public LVariable Add(ISymbol symbol, ITypeSymbol type, string name)
+        {
+            var v = new LVariable(_class, type, symbol, name);
+            SymbolDict[symbol] = v;
+            defines[name] = v;
+            return v;
+        }
+        public bool TryGet(ISymbol symbol, out LVariable? variable)
+        {
+            return SymbolDict.TryGetValue(symbol, out variable);
         }
 
     }

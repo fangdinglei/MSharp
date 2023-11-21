@@ -4,37 +4,24 @@ namespace MSharp.Core.CodeAnalysis.Compile
 {
     public class BaseAnalyzer
     {
-
+        TypeUtility _typeUtility = new TypeUtility();
         /// <summary>
         /// 获取名
         /// </summary>
         /// <param name="symbol"></param>
         /// <returns></returns>
-        protected string GetName(INamespaceOrTypeSymbol symbol)
+        protected string GetName(ITypeSymbol symbol)
         {
-            return symbol.Name;
+            return _typeUtility.GetName(symbol);
         }
         /// <summary>
         /// 获取全名
         /// </summary>
         /// <param name="symbol"></param>
         /// <returns></returns>
-        /// <exception cref="Exception"></exception>
-        protected string GetFullName(INamespaceOrTypeSymbol symbol)
+        protected string GetFullName(ITypeSymbol symbol)
         {
-#pragma warning disable CS8603 // 可能返回 null 引用。
-            return symbol.ToString();
-#pragma warning restore CS8603 // 可能返回 null 引用。
-            //var res = GetName(symbol);
-            //INamespaceOrTypeSymbol? node = symbol.ContainingNamespace as INamespaceOrTypeSymbol;
-            //while (node != null)
-            //{
-            //    res = GetName(node) + "." + res;
-            //    node = node.ContainingSymbol as INamespaceOrTypeSymbol;
-            //    if (node == null || (node is INamespaceSymbol ns && ns.IsGlobalNamespace))
-            //        break;
-            //}
-            //return res;
+            return symbol.ToString()!;
         }
     }
 }

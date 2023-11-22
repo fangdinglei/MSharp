@@ -1,8 +1,8 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using MSharp.Core.CodeAnalysis.Compile.Method;
 using MSharp.Core.CodeAnalysis.MindustryCode;
+using MSharp.Core.Exceptions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,16 +18,13 @@ namespace MSharp.Core.CodeAnalysis.Compile
 
         }
 
-
-
-        public List<BaseCode> Compile(params string[] codes)
+        public List<BaseCode> Compile(params CodeFile[] codes)
         {
-            // 解析C#代码
+            // Parse Code
             var syntaxTrees = codes.Select(code =>
             {
-                return CSharpSyntaxTree.ParseText(code);
+                return CSharpSyntaxTree.ParseText(code.Code);
             }).ToArray();
-            var compilationUnitSyntaxes = syntaxTrees.Select(it => it.GetCompilationUnitRoot()).ToArray();
             var compilation = CSharpCompilation.Create("fangdinglei")
                 .AddSyntaxTrees(syntaxTrees)
                 .AddReferences(
@@ -35,46 +32,38 @@ namespace MSharp.Core.CodeAnalysis.Compile
                     MetadataReference.CreateFromFile(typeof(List<>).Assembly.Location),
                     MetadataReference.CreateFromFile(typeof(IQueryable).Assembly.Location)
                 )
-                .WithOptions(new CSharpCompilationOptions(
-                    OutputKind.DynamicallyLinkedLibrary));
+                .WithOptions(new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+
             // 输出编译错误
             compilation.GetDeclarationDiagnostics().ToList().ForEach(Console.WriteLine);
             var semanticModels = syntaxTrees.Select(it =>
             {
                 var semanticModel = compilation.GetSemanticModel(it);
                 if (semanticModel == null)
-                    throw new Exception("GetSemanticModel:未知错误 请检查C#语法");
+                    throw new CompileError("GetSemanticModel returns null, please check your code");
                 return semanticModel;
             }).ToDictionary(it => it.SyntaxTree);
 
 
             CompileContext analyzeContext = new CompileContext(semanticModels);
-            foreach (var syntaxTree in syntaxTrees)
+            var tasks = syntaxTrees.Aggregate(new List<(SemanticModel, INamedTypeSymbol)>(), (res, syntaxTree) =>
             {
                 var semanticModel = semanticModels[syntaxTree];
                 var classes = syntaxTree.GetCompilationUnitRoot()
                     .DescendantNodes().OfType<ClassDeclarationSyntax>().ToList();
-                // 分析每个类
-                foreach (var clazz in classes)
-                {
-                    INamedTypeSymbol? classSymbol = semanticModel.GetDeclaredSymbol(clazz);
-                    if (classSymbol == null)
-                        throw new Exception("GetDeclaredSymbol:未知错误 请检查C#语法");
-                    new ClassAnalyzer().AnalyzeClass(analyzeContext, semanticModel, classSymbol);
-                }
+                res.AddRange(classes.Select(it => (semanticModel, semanticModel.GetDeclaredSymbol(it)!)));
+                return res;
+            });
+            // analyze field,method
+            foreach (var task in tasks)
+            {
+                ClassAnalyzer.Analyze(analyzeContext, task.Item1, task.Item2);
             }
-            foreach (var syntaxTree in syntaxTrees)
+            // analyze cpu code
+            foreach (var task in tasks)
             {
-                var semanticModel = semanticModels[syntaxTree];
-                var classes = syntaxTree.GetCompilationUnitRoot()
-                    .DescendantNodes().OfType<ClassDeclarationSyntax>().ToList();
-                // 分析每个类
-                foreach (var clazz in classes)
-                {
-                    INamedTypeSymbol? classSymbol = semanticModel.GetDeclaredSymbol(clazz);
-                    if (analyzeContext.Classes.TryGetValue(classSymbol, out var c))
-                        new ClassAnalyzer().AnalyzeCPUClass(analyzeContext, classSymbol, c);
-                }
+                if (analyzeContext.Classes.TryGetValue(task.Item2, out var c))
+                    ClassAnalyzer.AnalyzeCPU(analyzeContext, task.Item2, c);
             }
 
 
@@ -82,15 +71,10 @@ namespace MSharp.Core.CodeAnalysis.Compile
 
         }
 
-        public string CompileToText(params string[] codes)
+        public string CompileToText(params CodeFile[] codes)
         {
             throw new NotImplementedException();
         }
-    }
-
-
-    public class T : CSharpSyntaxWalker
-    {
 
     }
 }

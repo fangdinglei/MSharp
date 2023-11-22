@@ -1,25 +1,26 @@
 ﻿
 using Microsoft.CodeAnalysis;
+using MSharp.Core.CodeAnalysis;
 using MSharp.Core.CodeAnalysis.Compile;
 using MSharp.Core.Utility;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
-class Program2
+class App
 {
 
-    static void Read(DirectoryInfo d, List<string> r)
+    static void Read(DirectoryInfo d, List<CodeFile> r)
     {
         d.GetDirectories().ToList().ForEach(d => Read(d, r));
-        var files = d.GetFiles().ToList().Select(it => File.ReadAllText(it.FullName));
+        var files = d.GetFiles().Select(it => new CodeFile(it.Name, File.ReadAllText(it.FullName)));
         r.AddRange(files);
     }
 
     static void Main()
     {
         var path = CommonUtility.GetCodePathWhenDebug();
-        List<string> codes = new List<string>();
+        List<CodeFile> codes = new List<CodeFile>();
         Read(new DirectoryInfo(path + "Core/Logic"), codes);
         Read(new DirectoryInfo(path + "Core/Shared"), codes);
         Read(new DirectoryInfo(path + "Core/Game"), codes);

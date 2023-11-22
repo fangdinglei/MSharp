@@ -306,7 +306,7 @@ namespace MSharp.Core.CodeAnalysis.MindustryCode
             // jump 1 greaterThanEq x false
             // jump 1 strictEqual x false
             // jump 1 always x false
-            return $"jump {To?.Index ?? -1} {Op} {(Left != null ? Left.VariableOrValueString : "false")} {(Right != null ? Right.VariableOrValueString : "false")}";
+            return $"jump {To?.Index ?? -1} {Op} {(Left != null ? Left.VariableOrValueString : "0")} {(Right != null ? Right.VariableOrValueString : "0")}";
         }
 
     }

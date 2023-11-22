@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
+using static MSharp.Core.CodeAnalysis.Compile.TypeUtility;
 
 namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
 {
@@ -416,8 +417,8 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
                 bool needTarget = false;
                 int parameterCount = 0;
                 int targetIndex = 0;
-                var gameObjectCall = context.TypeUtility.IsSonOf(objectType.Type, typeof(GameObject))
-                    && GetGameApiName(semanticModel.GetSymbolInfo(memberCall).Symbol!, p.Context.TypeUtility, out gameApiName, out parameterCount, out needTarget, out targetIndex);
+                var gameObjectCall = IsSonOf(objectType.Type, typeof(GameObject))
+                    && GetGameApiName(semanticModel.GetSymbolInfo(memberCall).Symbol!, out gameApiName, out parameterCount, out needTarget, out targetIndex);
                 if (gameObjectCall)
                 {
                     // Parameters such as [ out int a ] can also be processed in this way, because in C #, their arguments can only be newly defined variables or previously defined variables
@@ -448,7 +449,7 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
                         // 内联可能引发循环依赖
                         // 取消延迟编译并立即编译方法体
                         context.WaitFurtherAnalyzing.Remove(methodSymbol);
-                        context.MethodAnalyzer.AnalyzeMethodBody(
+                        MethodAnalyzer.AnalyzeBody(
                            context, methodSymbol, methodCalled, true
                         );
 
@@ -463,7 +464,7 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
                             var argDefine = methodCalled.Parameters[i];
                             LVariableOrValue? variableOrValue;
 
-                            Debug.Assert(argDefine.Used.HasValue, $"parameter used or not should be analyzed when call {nameof(context.MethodAnalyzer.AnalyzeMethodBody)}");
+                            Debug.Assert(argDefine.Used.HasValue, $"parameter used or not should be analyzed when call {nameof(MethodAnalyzer.AnalyzeBody)}");
                             if (!argDefine.Used.Value)
                                 continue;
 
@@ -515,10 +516,10 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
         /// <br/> <see cref="GameApiAttribute"/>
         /// </summary>
         /// <param name="method"></param>
-        private bool GetGameApiName(ISymbol symbol, TypeUtility utility, out string? apiName, out int parameterCount, out bool needTarget, out int targetIndex)
+        private bool GetGameApiName(ISymbol symbol, out string? apiName, out int parameterCount, out bool needTarget, out int targetIndex)
         {
             apiName = null; parameterCount = 0; needTarget = false; targetIndex = 0;
-            var att = symbol!.GetAttributes().Where(it => utility.GetFullName(it!.AttributeClass!) == typeof(GameApiAttribute).FullName).FirstOrDefault();
+            var att = symbol!.GetAttributes().Where(it => GetFullName(it!.AttributeClass!) == typeof(GameApiAttribute).FullName).FirstOrDefault();
             if (att == null)
                 return false;
             apiName = (string)att.ConstructorArguments[0].Value!;
@@ -633,8 +634,8 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
             if (left is not IdentifierNameSyntax)
                 return false;
             var type = semanticModel.GetTypeInfo(left).Type!;
-            if (context.TypeUtility.IsSonOf(type, typeof(GameObject))
-                && context.TypeUtility.HasAttribute(semanticModel.GetSymbolInfo(right).Symbol!, typeof(GameObjectDataAttribute)))
+            if (IsSonOf(type, typeof(GameObject))
+                && HasAttribute(semanticModel.GetSymbolInfo(right).Symbol!, typeof(GameObjectDataAttribute)))
             {
                 return true;
             }
@@ -643,7 +644,7 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.ExpressionHandles
 
         private bool CheckGameConst(Parameter p, MemberAccessExpressionSyntax maes, string name, out LVariableOrValue? res)
         {
-            var fullName = p.Context.TypeUtility.GetFullName(p.SemanticMode.GetTypeInfo(maes).Type!);
+            var fullName = GetFullName(p.SemanticMode.GetTypeInfo(maes).Type!);
             FieldInfo? field = null;
             if (fullName == typeof(UnitConst).FullName && (field = typeof(UnitConst).GetField(name)) != null) { }
             else if (fullName == typeof(ItemConst).FullName && (field = typeof(ItemConst).GetField(name)) != null) { }

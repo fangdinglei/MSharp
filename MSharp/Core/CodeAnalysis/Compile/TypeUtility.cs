@@ -18,7 +18,7 @@ namespace MSharp.Core.CodeAnalysis.Compile
         /// <param name="symbol"></param>
         /// <param name="type"></param>
         /// <returns></returns>
-        public bool IsSonOf(ITypeSymbol? symbol, Type type)
+        static public bool IsSonOf(ITypeSymbol? symbol, Type type)
         {
             while (symbol != null)
             {
@@ -34,7 +34,7 @@ namespace MSharp.Core.CodeAnalysis.Compile
         /// </summary>
         /// <param name="symbol"></param>
         /// <returns></returns>
-        public string GetName(ITypeSymbol symbol)
+        static public string GetName(ITypeSymbol symbol)
         {
             return symbol.Name;
         }
@@ -43,12 +43,12 @@ namespace MSharp.Core.CodeAnalysis.Compile
         /// </summary>
         /// <param name="symbol"></param>
         /// <returns></returns>
-        public string GetFullName(ITypeSymbol symbol)
+        static public string GetFullName(ITypeSymbol symbol)
         {
             return symbol.ToString()!;
         }
 
-        public bool HasAttribute(ISymbol? symbol, Type type)
+        static public bool HasAttribute(ISymbol? symbol, Type type)
         {
             if (symbol == null)
                 return false;

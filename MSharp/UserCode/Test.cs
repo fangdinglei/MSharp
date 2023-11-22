@@ -52,7 +52,7 @@ namespace MSharp.UserCode
             //@unit.Idle();
             //
             //@unit.Target(1, 2, true);
-            //unit.Boost(out var se);
+            unit.Boost(out var se);
             //self.UnitBind(UnitConst.Mono);
 
             //for (int i = 0; i < 10; i++)

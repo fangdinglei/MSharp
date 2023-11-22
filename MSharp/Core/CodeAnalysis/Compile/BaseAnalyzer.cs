@@ -4,7 +4,6 @@ namespace MSharp.Core.CodeAnalysis.Compile
 {
     public class BaseAnalyzer
     {
-        TypeUtility _typeUtility = new TypeUtility();
         /// <summary>
         /// 获取名
         /// </summary>
@@ -12,7 +11,7 @@ namespace MSharp.Core.CodeAnalysis.Compile
         /// <returns></returns>
         protected string GetName(ITypeSymbol symbol)
         {
-            return _typeUtility.GetName(symbol);
+            return TypeUtility.GetName(symbol);
         }
         /// <summary>
         /// 获取全名

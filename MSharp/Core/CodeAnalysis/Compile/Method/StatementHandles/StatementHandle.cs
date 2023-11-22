@@ -176,7 +176,17 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method.StatementHandles
                 // else/else if
                 var elseStm = iss.Else.Statement;
                 var elseBlock = new LBlock(p.Block.Method);
-                Handle(new StatementHandleParameters(p.Context, p.SemanticModel, elseBlock, elseStm));
+                if (elseStm is IfStatementSyntax)
+                {
+                    Handle(new StatementHandleParameters(p.Context, p.SemanticModel, elseBlock, elseStm));
+                }
+                else
+                {
+                    var elseStms = GetStatements(elseStm);
+                    foreach (var item in elseStms)
+                        p.Context.StatementManager.Handle(item, p.Context, p.SemanticModel, elseBlock);
+                }
+
                 if (elseBlock.Codes.Count() != 0)
                 {
                     // end of if : jump out

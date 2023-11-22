@@ -1,127 +1,52 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using MSharp.Core.Logic;
+using MSharp.Core.Exceptions;
 using MSharp.Core.Shared;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using static MSharp.Core.CodeAnalysis.Compile.TypeUtility;
 
 namespace MSharp.Core.CodeAnalysis.Compile.Method
 {
-    internal class ClassAnalyzer : BaseAnalyzer
+    static internal class MethodAnalyzer
     {
-        /// <summary>
-        /// 是否是CPU逻辑
-        /// </summary>
-        /// <param name="classSymbol"></param>
-        /// <returns></returns>
-        bool IsCPUClass(INamedTypeSymbol classSymbol)
-        {
-            if (classSymbol.IsAbstract)
-                return false;
-            // 继承自 class GameCPU
-            INamedTypeSymbol? node = classSymbol.BaseType;
-            while (node != null)
-            {
-                if (GetFullName(node) == typeof(GameCPU).FullName)
-                {
-                    return true;
-                }
-                node = node.BaseType;
-            }
-            return false;
-        }
 
         /// <summary>
-        /// 是否有跳过注解
-        /// <br/> <see cref="GameIgnoreAttribute"//>
-        /// </summary>
-        /// <returns></returns>
-        bool IsIgnore(INamedTypeSymbol symbol)
-        {
-            var gameCallAttribute = symbol!.GetAttributes().Where(it => GetFullName(it!.AttributeClass) == typeof(GameIgnoreAttribute).FullName).FirstOrDefault();
-            return gameCallAttribute != null;
-        }
-
-        public void AnalyzeClass(CompileContext context, SemanticModel semanticModel, INamedTypeSymbol classSymbol)
-        {
-
-            if (IsIgnore(classSymbol))
-                return;
-
-            LClass lClass = context.CreateClass(classSymbol);
-            Dictionary<string, IMethodSymbol> functions = new Dictionary<string, IMethodSymbol>();
-            foreach (var member in classSymbol.GetMembers())
-            {
-                if (member is IFieldSymbol field)
-                {// 字段
-                    lClass.VariableTable.Add(field, field.Type, field.Name);
-                }
-                else if (member is IMethodSymbol method)
-                {// 方法
-                    functions.Add(method.Name, method);
-                }
-                else
-                {
-                    throw new Exception("不支持的类成员类型" + member);
-                }
-            }
-
-            // TODO 将校验移到合适位置
-            //IMethodSymbol? mainFunction = functions.GetValueOrDefault(nameof(GameCPU.Main));
-            //if (mainFunction == null)
-            //    throw new Exception($"没有找到[{classSymbol}]的主函数[{nameof(GameCPU.Main)}]，请检查代码是否正确");
-
-            context.MethodAnalyzer.AnalyzeMethods(context, functions, semanticModel, lClass);
-
-
-            //// 分析方法
-            //foreach ((string key, MethodDeclarationSyntax methodDeclaration) in functions)
-            //{
-            //    AnalyzeFunction(context, classDeclaration, methodDeclaration, lClass);
-            //}
-
-            //// 计算可达性 由于裁剪无效代码
-            //SortedSet<string> visitedFunctions = new SortedSet<string>();
-            //visitedFunctions.Add(nameof(GameCPU));
-
-            Console.WriteLine(1);
-
-        }
-
-        public void AnalyzeCPUClass(CompileContext context, INamedTypeSymbol classSymbol, LClass @class)
-        {
-            if (!IsCPUClass(classSymbol))
-                return;
-            foreach ((var methodSymbol, var method) in @class.Functions)
-            {
-                if (methodSymbol.Name == nameof(GameCPU.Main))
-                {
-                    context.MethodAnalyzer.AnalyzeMethodBody(context, methodSymbol, method, true);
-                }
-            }
-        }
-
-    }
-    internal class MethodAnalyzer : BaseAnalyzer
-    {
-        /// <summary>
-        /// 分析方法
+        /// analyze method declarations only(method first analyze)
         /// </summary>
         /// <param name="context"></param>
-        /// <param name="functions"></param>
+        /// <param name="methods"></param>
         /// <param name="semanticModel"></param>
         /// <param name="lClass"></param>
-        public void AnalyzeMethods(CompileContext context, Dictionary<string, IMethodSymbol> functions, SemanticModel semanticModel, LClass lClass)
+        static public void AnalyzeDeclaration(CompileContext context, IMethodSymbol methodSymbol, SemanticModel semanticModel, LClass lClass)
         {
-            foreach (var (name, func) in functions)
-            {// TODO 检查参数是否是 out 这样的
-                AnalyzeMethod(context, semanticModel, lClass, func);
+            // TODO 检查参数是否是 out 这样的
+            if (methodSymbol.DeclaringSyntaxReferences.Length > 1)
+                throw new SyntaxNotSupported("partial not supported:" + methodSymbol.ToString());
 
+            if (methodSymbol.DeclaringSyntaxReferences.Length == 0)
+            {
+                Console.WriteLine("method ignored:" + methodSymbol);
+                return;
             }
+
+            var method = lClass.CreateMethod(methodSymbol);
+            method.Parameters = AnalyzeMethodParameters(context, semanticModel, methodSymbol, method);
+
+            // 分析调用类型
+            AnalyzeCustomerCallAttribute(method, methodSymbol);
         }
 
-        public void AnalyzeMethodBody(CompileContext context, IMethodSymbol methodSymbol, LMethod method, bool checkCircularDependency)
+        /// <summary>
+        /// analyze method body(method second analyze)
+        /// </summary>
+        /// <param name="context"></param>
+        /// <param name="methodSymbol"></param>
+        /// <param name="method"></param>
+        /// <param name="checkCircularDependency"></param>
+        /// <exception cref="Exception"></exception>
+        static public void AnalyzeBody(CompileContext context, IMethodSymbol methodSymbol, LMethod method, bool checkCircularDependency)
         {
             if (checkCircularDependency && context.Analyzing.ContainsKey(methodSymbol))
                 throw new Exception("循环依赖:" + methodSymbol.ToString());
@@ -150,33 +75,14 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method
         }
 
         /// <summary>
-        /// 分析方法
+        /// analyze method parameters
         /// </summary>
         /// <param name="context"></param>
         /// <param name="semanticModel"></param>
+        /// <param name="methodSymbol"></param>
         /// <param name="method"></param>
-        /// <param name="funcSyntax"></param>
-        LMethod? AnalyzeMethod(CompileContext context, SemanticModel semanticModel, LClass @class, IMethodSymbol methodSymbol)
-        {
-            if (methodSymbol.DeclaringSyntaxReferences.Length > 1)
-                throw new Exception("不支持 partial 方法:" + methodSymbol.ToString());
-
-            if (methodSymbol.DeclaringSyntaxReferences.Length == 0)
-            {
-                Console.WriteLine("函数被忽略" + methodSymbol);
-                return null;
-            }
-
-            var method = @class.CreateMethod(methodSymbol);
-            method.Parameters = AnalyzeMethodParameters(context, semanticModel, methodSymbol, method);
-
-            // 分析调用类型
-            AnalyzeCustomerCallAttribute(method, methodSymbol);
-
-            return method;
-        }
-
-        private List<LParameter> AnalyzeMethodParameters(CompileContext context, SemanticModel semanticModel, IMethodSymbol methodSymbol, LMethod method)
+        /// <returns></returns>
+        static private List<LParameter> AnalyzeMethodParameters(CompileContext context, SemanticModel semanticModel, IMethodSymbol methodSymbol, LMethod method)
         {
             List<LParameter> res = new List<LParameter>();
             foreach (var parameterSymbol in methodSymbol.Parameters)
@@ -189,16 +95,14 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method
         }
 
         /// <summary>
-        /// 分析 方法类型
-        /// <br/> <see cref="CustomerCallAttribute"/>
+        /// determine if it has <see cref="CustomerCallAttribute"/>
         /// </summary>
-        /// <param name="method"></param>
-        private void AnalyzeCustomerCallAttribute(LMethod method, IMethodSymbol symbol)
+        static private void AnalyzeCustomerCallAttribute(LMethod method, IMethodSymbol symbol)
         {
-            var gameCallAttribute = symbol!.GetAttributes().Where(it => GetFullName(it!.AttributeClass) == typeof(CustomerCallAttribute).FullName).FirstOrDefault();
+            var gameCallAttribute = symbol!.GetAttributes().Where(it => GetFullName(it!.AttributeClass!) == typeof(CustomerCallAttribute).FullName).FirstOrDefault();
             if (gameCallAttribute != null)
             {
-                method.CallMode = (MethodCallMode)(int)gameCallAttribute.ConstructorArguments[0].Value;
+                method.CallMode = (MethodCallMode)(int)gameCallAttribute.ConstructorArguments[0].Value!;
             }
             else
             {

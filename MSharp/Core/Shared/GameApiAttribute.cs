@@ -14,11 +14,11 @@ namespace MSharp.Core.Shared
         /// </summary>
         public int ParameterCount;
         /// <summary>
-        /// if no default target,command target needed
+        /// if no default target,command target needed(for example, the unit API does not need to specify the charged unit)
         /// </summary>
         public bool NeedTarget;
         /// <summary>
-        /// target index in command
+        /// target index in command(most API 0, but memory API is an exception)
         /// </summary>
         public int TargetIndex;
 

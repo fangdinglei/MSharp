@@ -1,5 +1,7 @@
 ﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using MSharp.Core.CodeAnalysis.Compile.Method.StatementHandles;
+using MSharp.Core.CodeAnalysis.Language;
 using MSharp.Core.Exceptions;
 using MSharp.Core.Shared;
 using System;
@@ -65,7 +67,7 @@ namespace MSharp.Core.CodeAnalysis.Compile.Method
                 method.Block = block;
                 foreach (var statement in statements.ToList())
                 {
-                    context.StatementManager.Handle(statement, context, semanticModel, block);
+                    StatementHandle.Handle(statement, context, semanticModel, block);
                 }
             }
             finally

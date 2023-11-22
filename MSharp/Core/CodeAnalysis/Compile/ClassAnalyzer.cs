@@ -1,5 +1,6 @@
 ﻿using Microsoft.CodeAnalysis;
 using MSharp.Core.CodeAnalysis.Compile.Method;
+using MSharp.Core.CodeAnalysis.Language;
 using MSharp.Core.Exceptions;
 using MSharp.Core.Logic;
 using MSharp.Core.Shared;

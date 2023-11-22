@@ -1,5 +1,5 @@
 ﻿using Microsoft.CodeAnalysis;
-using MSharp.Core.CodeAnalysis.Compile.Method.StatementHandles;
+using MSharp.Core.CodeAnalysis.Language;
 using System.Collections.Generic;
 using System.Diagnostics;
 
@@ -7,8 +7,6 @@ namespace MSharp.Core.CodeAnalysis.Compile
 {
     public class CompileContext
     {
-        internal readonly StatementManager StatementManager = new();
-
         internal readonly Dictionary<INamedTypeSymbol, LClass> Classes = new(SymbolEqualityComparer.Default);
 
         internal readonly Dictionary<IMethodSymbol, LMethod> Methods = new(SymbolEqualityComparer.Default);

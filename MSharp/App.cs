@@ -1,8 +1,8 @@
 ﻿
 using Microsoft.CodeAnalysis;
-using MSharp.Core.CodeAnalysis;
-using MSharp.Core.CodeAnalysis.Compile;
+using MSharp.Core.Compile;
 using MSharp.Core.Utility;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -26,6 +26,6 @@ class App
         Read(new DirectoryInfo(path + "Core/Game"), codes);
         Read(new DirectoryInfo(path + "UserCode"), codes);
 
-        new Compiler().Compile(codes.ToArray());
+        Console.WriteLine(new Compiler().CompileToText(codes.ToArray()));
     }
 }

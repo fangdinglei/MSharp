@@ -39,12 +39,19 @@ namespace MSharp.Core.Compile.Language
             PostCodes.Clear();
         }
 
-        public void Emit(BaseCode baseCode)
+        public void Emit(BaseCode baseCode, bool postCode = false)
         {
-            NextCall(baseCode);
-            NextCall = (a) => { };
-            Codes.Add(baseCode);
-            Console.WriteLine("emit " + baseCode.ToMindustryCodeString());
+            if (postCode)
+            {
+                PostCodes.Add(baseCode);
+            }
+            else
+            {
+                NextCall(baseCode);
+                NextCall = (a) => { };
+                Codes.Add(baseCode);
+                Console.WriteLine("emit " + baseCode.ToMindustryCodeString());
+            }
         }
         public void Emit(List<BaseCode> baseCodes)
         {
@@ -54,8 +61,11 @@ namespace MSharp.Core.Compile.Language
             NextCall(first);
             NextCall = (a) => { };
             Codes.AddRange(baseCodes);
+            foreach (var baseCode in baseCodes)
+            {
+                Console.WriteLine("emit " + baseCode.ToMindustryCodeString());
+            }
         }
-
 
 
         public override string ToString()

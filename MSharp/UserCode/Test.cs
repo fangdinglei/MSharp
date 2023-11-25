@@ -52,7 +52,6 @@ namespace MSharp.UserCode
             //@unit.Idle();
             //
             //@unit.Target(1, 2, true);
-            unit.Boost(out var se);
             //self.UnitBind(UnitConst.Mono);
 
             //for (int i = 0; i < 10; i++)
@@ -68,20 +67,31 @@ namespace MSharp.UserCode
             //    int i = 1;
             //    i++;
             //}
+            //int i = 0;
+            //if (i++ == 0)
+            //{
+            //    i = 2;
+            //}
+            //else if (i == 1)
+            //{
+            //    i = 3;
+            //}
+            //else
+            //{
+            //    i = 5;
+            //}
+
             int i = 0;
-            if (1 == 2)
+            if (++i == 1)
             {
-                i = 2;
+
             }
-            else if (2 == 3)
+            if (i == 1)
             {
                 i = 3;
             }
-            else
-            {
-                i = 5;
-            }
-
+            self.AssertEqual(i, 1);
+            self.AssertEqual(i, 3);
             // TODO内联函数调用
             // TODO函数参数类型确定 含是否 out
             // TODO编译优化

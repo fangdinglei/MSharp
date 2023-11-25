@@ -1,4 +1,5 @@
 ﻿using MSharp.Core.Compile.Language;
+using MSharp.Core.Utility;
 
 namespace MSharp.Core.Compile.MindustryCode
 {
@@ -11,6 +12,7 @@ namespace MSharp.Core.Compile.MindustryCode
         {
             Name = name;
             Value = value;
+            value.ValueList!.ForEach(_variables.AddIfNotNullNoReturn);
         }
         public override string ToMindustryCodeString()
         {

@@ -27,15 +27,13 @@ namespace MSharp.Core.Compile.Method.ExpressionHandles
         {
             public Parameter WithExpression(ExpressionSyntax expression)
             {
-                return new Parameter(expression, Context, SemanticMode, Block, Method);
+                return new Parameter(expression, Context, SemanticMode, Block, Method, Right);
             }
 
             public Parameter WithRight(LVariableOrValue right)
             {
-                Right = right;
                 return new Parameter(Syntax, Context, SemanticMode, Block, Method, right);
             }
-
         }
 
         static public Dictionary<Type, ExpressionHandle> _handles = new();
@@ -92,9 +90,9 @@ namespace MSharp.Core.Compile.Method.ExpressionHandles
             }
             throw new Exception("TODO not support   " + p.Syntax.ToString());
         }
-        static public LVariableOrValue Assign(LVariable left, LVariableOrValue right, LBlock block)
+        static public LVariableOrValue Assign(LVariable left, LVariableOrValue right, LBlock block, bool postCode = false)
         {
-            block.Emit(new Code_Assign(left, right));
+            block.Emit(new Code_Assign(left, right), postCode);
             return right;
         }
 

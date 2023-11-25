@@ -1,6 +1,7 @@
 ﻿
 using Microsoft.CodeAnalysis;
 using MSharp.Core.Compile;
+using MSharp.Core.Simulate;
 using MSharp.Core.Utility;
 using System;
 using System.Collections.Generic;
@@ -26,6 +27,12 @@ class App
         Read(new DirectoryInfo(path + "Core/Game"), codes);
         Read(new DirectoryInfo(path + "UserCode"), codes);
 
-        Console.WriteLine(new Compiler().CompileToText(codes.ToArray()));
+        var intermediateCodes = new Compiler().Compile(codes.ToArray());
+        Console.WriteLine(new Compiler().CompileToText(intermediateCodes));
+        Console.WriteLine();
+        Console.WriteLine();
+        MVM mvm = new MVM(intermediateCodes);
+        mvm.Run();
+
     }
 }

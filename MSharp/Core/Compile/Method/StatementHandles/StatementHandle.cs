@@ -4,7 +4,6 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using MSharp.Core.CodeAnalysis.Compile.MindustryCode;
 using MSharp.Core.Compile.Language;
 using MSharp.Core.Compile.Method.ExpressionHandles;
-using MSharp.Core.Compile.MindustryCode;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;

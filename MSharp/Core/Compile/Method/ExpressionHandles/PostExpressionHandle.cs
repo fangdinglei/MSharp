@@ -2,7 +2,6 @@
 using MSharp.Core.Compile.Language;
 using MSharp.Core.Compile.MindustryCode;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 
 namespace MSharp.Core.Compile.Method.ExpressionHandles
@@ -19,32 +18,37 @@ namespace MSharp.Core.Compile.Method.ExpressionHandles
             Debug.Assert(syntax is PostfixUnaryExpressionSyntax);
             var pues = (PostfixUnaryExpressionSyntax)syntax;
 
-            var right = GetRight(p.WithExpression(pues.Operand));
-
             if (pues.OperatorToken.Text == "++")
             {
-                var t = p.Block.Codes;
-                p.Block.Codes = new List<BaseCode>();
-
-                var res = PrefixUnaryExpressionHandle.ProcessSelfIncreasingAndDecreasing(p.WithExpression(pues.Operand), MindustryOperatorKind.add);
-
-                p.Block.PostCodes.InsertRange(0, p.Block.Codes);
-                p.Block.Codes = t;
-                return res;
+                // i ++
+                return ProcessSelfIncreasingAndDecreasing(p.WithExpression(pues.Operand), MindustryOperatorKind.add);
             }
             else if (pues.OperatorToken.Text == "--")
             {
-                var t = p.Block.Codes;
-                p.Block.Codes = new List<BaseCode>();
-
-                var res = PrefixUnaryExpressionHandle.ProcessSelfIncreasingAndDecreasing(p.WithExpression(pues.Operand), MindustryOperatorKind.sub);
-
-                p.Block.PostCodes.InsertRange(0, p.Block.Codes);
-                p.Block.Codes = t;
-                return res;
+                return ProcessSelfIncreasingAndDecreasing(p.WithExpression(pues.Operand), MindustryOperatorKind.sub);
             }
             throw new Exception();
         }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="p"></param>
+        /// <param name="op"></param>
+        /// <returns></returns>
+        static public LVariableOrValue ProcessSelfIncreasingAndDecreasing(Parameter p, MindustryOperatorKind op)
+        {
+            /**
+             *  this operation will be rewritten during the optimization phase
+             *  i++ i--
+             */
+            var right = GetRight(p);
+            var var2 = new LVariableOrValue(p.Block.Method.VariableTable.AddTempVariable(right.Variable!.Type!));
+            p.Block.Emit(new Code_Operation(MindustryOperatorKind.add, var2, right, new LVariableOrValue(1)), true);
+            Assign(right.Variable!, var2, p.Block, true);
+            return right;
+        }
+
     }
 
 }

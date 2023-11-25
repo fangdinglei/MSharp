@@ -45,7 +45,7 @@
         notEqual = 9,
         NE = 9,
         /// <summary>
-        /// &&
+        /// <![CDATA[&&]]>
         /// </summary>
         land = 10,
         AND = 10,

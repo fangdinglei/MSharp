@@ -34,5 +34,10 @@ namespace MSharp.Core.Utility
             }
             return false;
         }
+        static public void AddIfNotNullNoReturn<T>(this HashSet<T> set, T? value)
+        {
+            if (value != null)
+                set.Add(value);
+        }
     }
 }

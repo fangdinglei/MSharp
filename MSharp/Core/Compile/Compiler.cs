@@ -4,7 +4,6 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using MSharp.Core.Compile.Language;
 using MSharp.Core.Compile.MindustryCode;
 using MSharp.Core.Exceptions;
-using MSharp.Core.Simulate;
 using MSharp.Core.Utility;
 using System;
 using System.Collections.Generic;
@@ -90,12 +89,17 @@ namespace MSharp.Core.Compile
                 code.Index = idx;
                 idx += code.CodeLength;
             }
-
-            MVM mvm = new MVM(intermediateCodes);
-            mvm.Run();
             return intermediateCodes;
         }
-
+        public string CompileToText(List<BaseCode> codes)
+        {
+            StringBuilder sb = new StringBuilder();
+            foreach (var code in codes)
+            {
+                sb.AppendLine(code.ToMindustryCodeString());
+            }
+            return sb.ToString();
+        }
         public string CompileToText(params CodeFile[] codes)
         {
             var intermediateCodes = Compile(codes);

@@ -272,9 +272,9 @@ namespace MSharp.Core.Game
         /// </summary>
         [GameApi("ucontrol autoPathfind", 5, false)] public void AutoPathFind() { }
         /// <summary>
-        /// 开始/结束 起飞 参数暂时供测试使用，用完删除
+        /// 开始/结束 起飞
         /// </summary>
-        [GameApi("ucontrol boost", 5, false)] public void Boost(out int a) { a = 1; }
+        [GameApi("ucontrol boost", 5, false)] public void Boost() { }
         /// <summary>
         /// 瞄准或开火
         /// </summary>
@@ -447,6 +447,7 @@ namespace MSharp.Core.Game
         [GameApi("draw linePoly", 6)] public void DrawLinePoly(double x, double y, double sides, double radius, double rotation) { }
         [GameApi("draw triangle", 6)] public void DrawTriangle(double x, double y, double x2, double y2, double x3, double y3) { }
         [GameApi("draw image", 6)] public void DrawImage(double x, double y, GameConst image, double size, double rotation) { }
+        [GameApi(ConstStringDefine.CMD_DEBUGGER, -1)] public void AssertEqual(object x, object y) { }
     }
 
     public class GameConst

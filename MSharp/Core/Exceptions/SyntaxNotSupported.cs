@@ -30,4 +30,12 @@ namespace MSharp.Core.Exceptions
 
         }
     }
+
+    public class SimulateError : Exception
+    {
+        public SimulateError(string? message) : base("simulate fail " + message)
+        {
+
+        }
+    }
 }

@@ -50,8 +50,8 @@ namespace MSharp.Core.CodeAnalysis.Compile.MindustryCode
             Op = op;
             Left = left;
             Right = right;
-            _variables.AddIfNotNull(left);
-            _variables.AddIfNotNull(right);
+            R(left);
+            R(right);
             me = this;
         }
 

@@ -14,9 +14,9 @@ namespace MSharp.Core.Compile.MindustryCode
             Left = op1;
             Right = op2;
             Result = result;
-            _variables.Add(op1);
-            _variables.Add(op2);
-            _variables.Add(Result);
+            R(op1);
+            R(op2);
+            W(Result);
         }
         public override string ToMindustryCodeString()
         {

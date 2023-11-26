@@ -14,8 +14,8 @@ namespace MSharp.Core.Compile.MindustryCode
             Result = result;
             Object = @object;
             Member = member;
-            _variables.Add(result);
-            _variables.Add(@object);
+            R(@object);
+            W(result);
         }
 
         public override string ToMindustryCodeString()

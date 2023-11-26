@@ -11,8 +11,8 @@ namespace MSharp.Core.Compile.MindustryCode
         {
             Left = new LVariableOrValue(left);
             Right = right;
-            _variables.Add(Left);
-            _variables.Add(right);
+            W(Left);
+            R(Right);
         }
 
         public override string ToMindustryCodeString()

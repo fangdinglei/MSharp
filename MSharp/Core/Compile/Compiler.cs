@@ -79,16 +79,8 @@ namespace MSharp.Core.Compile
             if (mainMethods.Count > 1)
                 throw new CompileError("only one cpu class supported now");
 
-            List<string> res = new List<string>();
             var intermediateCodes = mainMethods[0].Block!.Codes;
-            int idx = 0;
-            foreach (var code in intermediateCodes)
-            {
-                if (code.Deprecated)
-                    continue;
-                code.Index = idx;
-                idx += code.CodeLength;
-            }
+            ReIndex(intermediateCodes);
             return intermediateCodes;
         }
         public string CompileToText(List<BaseCode> codes)
@@ -111,6 +103,17 @@ namespace MSharp.Core.Compile
             return sb.ToString();
         }
 
+        public void ReIndex(List<BaseCode> codes)
+        {
+            int idx = 0;
+            foreach (var code in codes)
+            {
+                if (code.Deprecated)
+                    continue;
+                code.Index = idx;
+                idx += code.CodeLength;
+            }
+        }
     }
 
 }

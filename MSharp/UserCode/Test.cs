@@ -90,7 +90,6 @@ namespace MSharp.UserCode
             {
                 i = 3;
             }
-            double b = 0; 
             self.AssertEqual(i, 1);
             self.AssertEqual(i, 3);
             // TODO内联函数调用

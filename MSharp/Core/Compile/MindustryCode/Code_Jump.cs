@@ -1,6 +1,5 @@
 ﻿using MSharp.Core.Compile.Language;
 using MSharp.Core.Compile.MindustryCode;
-using MSharp.Core.Utility;
 
 namespace MSharp.Core.CodeAnalysis.Compile.MindustryCode
 {
@@ -40,7 +39,7 @@ namespace MSharp.Core.CodeAnalysis.Compile.MindustryCode
             strictEqual = 8,
         }
 
-        public BaseCode? To;
+        public BaseCode? To { get; private set; }
         public readonly OpCode Op;
         public readonly LVariableOrValue? Left;
         public readonly LVariableOrValue? Right;
@@ -53,6 +52,14 @@ namespace MSharp.Core.CodeAnalysis.Compile.MindustryCode
             R(left);
             R(right);
             me = this;
+        }
+        public Code_Jump(OpCode op, LVariableOrValue? left = null, LVariableOrValue? right = null)
+            : this(out _, op, left, right) { }
+
+        public void JumpTo(BaseCode to)
+        {
+            To = to;
+            to.JumpFrom.Add(this);
         }
 
         public override string ToMindustryCodeString()

@@ -2,6 +2,7 @@
 using MSharp.Core.CodeAnalysis.Compile.MindustryCode;
 using MSharp.Core.Compile.Language;
 using MSharp.Core.Compile.MindustryCode;
+using MSharp.Core.Exceptions;
 using MSharp.Core.Shared;
 using System;
 using System.Collections.Generic;
@@ -214,15 +215,24 @@ namespace MSharp.Core.Simulate
 
     internal class MThread
     {
+        public IReadOnlyList<BaseCode> Codes;
         public int CodePtr = 0;
+
+        public IVariableTable VariableTable;
+
+        public bool Done => CodePtr >= Codes.Count;
+        public BaseCode CurrentCode => Codes[CodePtr];
+
+        public MThread(IReadOnlyList<BaseCode> codes, IVariableTable variableTable)
+        {
+            Codes = codes;
+            VariableTable = variableTable;
+        }
     }
-    internal class MVM : IVariableTable
+    internal class MVM
     {
         static Dictionary<Type, BaseCodeExecuter> s_baseCodeExecuters = new();
 
-
-        private List<BaseCode> _codes;
-        public Dictionary<string, object> Values = new Dictionary<string, object>();
 
         static MVM()
         {
@@ -234,10 +244,53 @@ namespace MSharp.Core.Simulate
             }
         }
 
-        public MVM(List<BaseCode> codes)
+        public MVM()
         {
-            _codes = codes;
         }
+
+
+
+        public void Run(List<BaseCode> codes)
+        {
+            Run(new List<List<BaseCode>> { codes });
+        }
+        public void Run(List<List<BaseCode>> codes)
+        {
+            if (codes.Count == 0)
+                return;
+            if (codes.Count > 1)
+                throw new SimulateError("not supported");
+            List<MThread> threads = codes.Select(c => new MThread(c, new VariableTableImp())).ToList();
+            List<MThread> threads2 = new List<MThread>();
+            while (threads.Count > 0)
+            {
+                foreach (var thread in threads)
+                {
+                    if (thread.Done)
+                        continue;
+                    var code = thread.CurrentCode;
+                    thread.CodePtr++;
+                    if (s_baseCodeExecuters.TryGetValue(code.GetType(), out BaseCodeExecuter? exe) && exe != null)
+                    {
+                        exe!.Execute(code, thread, thread.VariableTable);
+                    }
+                    else
+                    {
+                        //throw new SimulateError($"code not supported:{code.ToMindustryCodeString()}");
+                    }
+                    if (!thread.Done)
+                        threads2.Add(thread);
+                }
+                (threads, threads2) = (threads2, threads);
+                threads2.Clear();
+            }
+        }
+
+    }
+
+    internal class VariableTableImp : IVariableTable
+    {
+        public Dictionary<string, object> Values = new Dictionary<string, object>();
 
         public dynamic GetValue(LVariableOrValue vv)
         {
@@ -256,22 +309,5 @@ namespace MSharp.Core.Simulate
                 throw new Exception();
             return obj;
         }
-        public void Run()
-        {
-            MThread mThread = new MThread();
-            while (mThread.CodePtr < _codes.Count)
-            {
-                var code = _codes[mThread.CodePtr++];
-                if (s_baseCodeExecuters.TryGetValue(code.GetType(), out BaseCodeExecuter? exe) && exe != null)
-                {
-                    exe!.Execute(code, mThread, this);
-                }
-                else
-                {
-                    //throw new SimulateError($"code not supported:{code.ToMindustryCodeString()}");
-                }
-            }
-        }
-
     }
 }

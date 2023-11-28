@@ -49,17 +49,17 @@ namespace MSharp.Core.Compile.Method.ExpressionHandles
                     // out int a 这样的参数在这里也可以这样被处理，因为在C#中他们的实参只能是新定义的变量或者之前定义的变量
                     var argList = ies.ArgumentList.Arguments
                           .Select(arg => GetRight(p.WithExpression(arg.Expression)))
-                          .ToList(); 
-                    var rwList= ies.ArgumentList.Arguments
+                          .ToList();
+                    var rwList = ies.ArgumentList.Arguments
                         .Select(arg => (string)arg.RefKindKeyword.Value! != "out")
                         .ToList();
                     if (needTarget)
                     {
-                        rwList.Insert(targetIndex,true);
+                        rwList.Insert(targetIndex, true);
                         argList.Insert(targetIndex, GetRight(p.WithExpression(memberCall.Expression)));
                     }
 
-                    //p.Block.Emit(new Code_Command(gameApiName!, new LVariableOrValue(argList, parameterCount)));
+                    p.Block.Emit(new Code_Command(gameApiName!, new LVariableOrValue(argList, parameterCount), rwList.ToArray()));
 
                     return null;
 

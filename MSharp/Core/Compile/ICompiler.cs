@@ -7,6 +7,7 @@ namespace MSharp.Core.Compile
     {
 
         List<BaseCode> Compile(params CodeFile[] codes);
+        void ReIndex(List<BaseCode> codes);
         string CompileToText(List<BaseCode> codes);
         string CompileToText(params CodeFile[] codes);
 

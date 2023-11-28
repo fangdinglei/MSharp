@@ -25,6 +25,12 @@ namespace MSharp.Core.Utility
             }
             return false;
         }
+        static public T2 AddThen<T, T2>(this List<T> ls, T2 value) where T2 : T
+        {
+            ls.Add(value);
+            return value;
+        }
+
         static public bool AddIfNotNull<T>(this HashSet<T> set, T? value)
         {
             if (value != null)

@@ -205,7 +205,7 @@ namespace MSharp.Core.Compile.Method.StatementHandles
                     // end of if : jump out
                     p.Block.Emit(new Code_Jump(out var jumpOut, Code_Jump.OpCode.always));
                     // jump here when if is not true
-                    jumpNext.To = elseBlock.Codes[0];
+                    jumpNext.JumpTo(elseBlock.Codes[0]);
                     // else if body
                     p.Block.Emit(elseBlock.Codes);
 
@@ -213,14 +213,14 @@ namespace MSharp.Core.Compile.Method.StatementHandles
                     p.Block.ContinueCall += (node) => elseBlock.ContinueCall(node);
                     p.Block.NextCall += (node) => elseBlock.NextCall(node);
                     // end of if : jump out
-                    p.Block.NextCall += (node) => jumpOut.To = node;
+                    p.Block.NextCall += (node) => jumpOut.JumpTo(node);
                 }
 
             }
             // if no else or else is empty,set jump next
             if (jumpNext.To == null)
             {
-                p.Block.NextCall += (node) => jumpNext.To = node;
+                p.Block.NextCall += (node) => jumpNext.JumpTo(node);
             }
 
         }
@@ -251,14 +251,14 @@ namespace MSharp.Core.Compile.Method.StatementHandles
                 // jump begin of while
                 p.Block.Emit(new Code_Jump(out var jumpBegin, Code_Jump.OpCode.always));
                 // continue in block  or  end of while should jump to begin
-                jumpBegin.To = p.Block.Codes[conditionCodeStart];
+                jumpBegin.JumpTo(p.Block.Codes[conditionCodeStart]);
                 whileBlock.ContinueCall(jumpBegin.To);
                 // next of while block is jumpBegin   jumpBegin => jumpBegin.To
                 whileBlock.NextCall(jumpBegin.To);
                 p.Block.ReturnCall += (node) => whileBlock.ReturnCall(node);
 
                 // register jump out
-                p.Block.NextCall += (node) => jumpOut.To = node;
+                p.Block.NextCall += (node) => jumpOut.JumpTo(node);
             }
         }
     }
@@ -332,7 +332,7 @@ namespace MSharp.Core.Compile.Method.StatementHandles
                 p.Block.ReturnCall += (node) => forBlock.ReturnCall(node);
             }
             if (jumpOut != null)
-                p.Block.NextCall += (node) => jumpOut.To = node;
+                p.Block.NextCall += (node) => jumpOut.JumpTo(node);
 
         }
     }

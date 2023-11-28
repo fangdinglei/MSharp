@@ -1,4 +1,5 @@
-﻿using MSharp.Core.Compile.Language;
+﻿using MSharp.Core.CodeAnalysis.Compile.MindustryCode;
+using MSharp.Core.Compile.Language;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -32,8 +33,10 @@ namespace MSharp.Core.Compile.MindustryCode
         public int Index = -1;
         public virtual int CodeLength { get; } = 1;
         public bool Deprecated;
+        public List<Code_Jump> JumpFrom = new List<Code_Jump>();
 
-        protected LVariableOrValue? R(LVariableOrValue? r) {
+        protected LVariableOrValue? R(LVariableOrValue? r)
+        {
             if (r == null)
                 return r;
             _variablesRead.Add(r);

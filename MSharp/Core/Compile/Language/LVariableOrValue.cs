@@ -16,8 +16,9 @@ namespace MSharp.Core.Compile.Language
         public List<LVariableOrValue>? ValueList { get; private set; }
 
         public bool IsVariable => Variable != null;
-
         public bool IsList => ValueList != null;
+        public bool IsValue => !IsList && !IsVariable;
+
 
         public string VariableOrValueString => IsVariable ? Variable!.RealName
             : IsList ? MultiValueToString()

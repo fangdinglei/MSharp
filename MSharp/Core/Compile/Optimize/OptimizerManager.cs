@@ -8,6 +8,7 @@ using System.Linq;
 
 namespace MSharp.Core.Compile.Optimize
 {
+    // testing
     internal abstract class BaseOptimizer
     {
         public abstract bool OnlyOneTime { get; }
